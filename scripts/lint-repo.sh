@@ -94,9 +94,15 @@ check "segredo do SSO existente não é sobrescrito" test "$(get_var KC_GRAFANA_
 if command -v docker >/dev/null 2>&1 && docker compose version >/dev/null 2>&1; then
   : > "$tmp/empty.env"
   empty_env="$(cygpath -m "$tmp/empty.env" 2>/dev/null || echo "$tmp/empty.env")"
-  for var in GRAFANA_ADMIN_USER GRAFANA_ADMIN_PASSWORD GF_SECURITY_SECRET_KEY KC_GRAFANA_CLIENT_SECRET; do
-    out="$(env -u GRAFANA_ADMIN_USER -u GRAFANA_ADMIN_PASSWORD -u GF_SECURITY_SECRET_KEY \
-      docker compose --env-file "$empty_env" config 2>&1 || true)"
+  required_vars=(GRAFANA_ADMIN_USER GRAFANA_ADMIN_PASSWORD GF_SECURITY_SECRET_KEY KC_GRAFANA_CLIENT_SECRET)
+  for var in "${required_vars[@]}"; do
+    # Uma variável por vez: as OUTRAS recebem um valor de enchimento (não é segredo) e só a testada fica ausente. Versões
+    # novas do docker compose (runner do GitHub) reportam só o primeiro erro, então não dá para testar as quatro juntas.
+    env_args=()
+    for other in "${required_vars[@]}"; do
+      [[ "$other" == "$var" ]] || env_args+=("${other}=lint-placeholder")
+    done
+    out="$(env -u "$var" "${env_args[@]}" docker compose --env-file "$empty_env" config 2>&1 || true)"
     check "compose sem .env falha pedindo $var" grep -qF "defina $var no .env" <<<"$out"
     [[ "$CHECK_OK" == 1 ]] || printf '   saída do compose (só nomes de variáveis, sem valores):\n%s\n' "$(head -c 600 <<<"$out" | sed 's/^/     /')"
   done

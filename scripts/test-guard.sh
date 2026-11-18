@@ -8,9 +8,15 @@ set -euo pipefail
 PLAYWRIGHT_IMAGE="mcr.microsoft.com/playwright:v1.64.1-noble@sha256:2f05f8a734509a7b3f26a912639488ee08f58a7b292d14d62271bcff9038768f"
 cd "$(dirname "$0")/.."
 
+# Os arquivos vão explícitos: o Node 22 (runner do GitHub) trata uma PASTA passada ao --test como módulo e falha com
+# MODULE_NOT_FOUND; só as versões mais novas expandem a pasta.
+shopt -s nullglob
+test_files=(tests/unit/*.test.mjs)
+[[ ${#test_files[@]} -gt 0 ]] || { echo "nenhum teste em tests/unit/*.test.mjs" >&2; exit 1; }
+
 if [[ "${NODE_LOCAL:-}" == "1" ]]; then
-  node --test tests/unit/
+  node --test "${test_files[@]}"
 else
   host_dir="$(pwd -W 2>/dev/null || pwd)"
-  MSYS_NO_PATHCONV=1 docker run --rm -v "${host_dir}:/repo:ro" -w /repo "$PLAYWRIGHT_IMAGE" node --test tests/unit/
+  MSYS_NO_PATHCONV=1 docker run --rm -v "${host_dir}:/repo:ro" -w /repo "$PLAYWRIGHT_IMAGE" node --test "${test_files[@]}"
 fi
