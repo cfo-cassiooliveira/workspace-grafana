@@ -1,0 +1,19 @@
+# Datasource de métricas: Prometheus da stack grafana-metrics (ADR-0003), lido pela rede externa "metrics".
+# Só o Prometheus entra nessa rede junto do Grafana: o blackbox e as APIs ficam em redes que o Grafana não alcança.
+# O alias "prometheus" é o nome do serviço no compose de prometheus/. Sem autenticação: o Prometheus não publica porta
+# no host e só é acessível pela rede interna `metrics` (sem credenciais no repositório; em produção: auth + TLS).
+apiVersion: 1
+
+datasources:
+  - name: Prometheus
+    uid: prometheus
+    type: prometheus
+    access: proxy
+    url: http://prometheus:9090
+    isDefault: false
+    editable: false
+    jsonData:
+      httpMethod: POST
+      timeInterval: 15s
+      # Evita consultas pesadas pelo Explore/painéis: limita o tempo de resposta do Prometheus.
+      queryTimeout: 30s

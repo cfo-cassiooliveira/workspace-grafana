@@ -1,0 +1,6 @@
+# Contexto de build mínimo: o Dockerfile não copia nada do repositório; isto evita enviar segredos ao daemon num COPY futuro.
+.env
+.backups/
+.git
+prometheus/
+tests/

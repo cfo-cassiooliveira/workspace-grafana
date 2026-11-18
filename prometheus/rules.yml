@@ -1,0 +1,14 @@
+# Regras de gravação: disponibilidade por sistema e endpoint (fração 0..1 de sondas com sucesso na janela).
+# Consumidas pelo dashboard e pelo alerta da T17. Convenção: nível:métrica:operação.
+groups:
+  - name: api-availability
+    interval: 1m
+    rules:
+      - record: project_endpoint:probe_success:avg_over_time5m
+        expr: avg by (project, endpoint) (avg_over_time(probe_success{job="api-health"}[5m]))
+      - record: project_endpoint:probe_success:avg_over_time24h
+        expr: avg by (project, endpoint) (avg_over_time(probe_success{job="api-health"}[24h]))
+      - record: project_endpoint:probe_success:avg_over_time7d
+        expr: avg by (project, endpoint) (avg_over_time(probe_success{job="api-health"}[7d]))
+      - record: project_endpoint:probe_success:avg_over_time30d
+        expr: avg by (project, endpoint) (avg_over_time(probe_success{job="api-health"}[30d]))

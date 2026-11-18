@@ -1,0 +1,13 @@
+# Módulos de sonda do blackbox exporter.
+modules:
+  # Health check HTTP: sucesso só com 2xx (readiness 503 conta como falha). Sem redirecionamento, sem TLS (rede interna).
+  http_2xx:
+    prober: http
+    # Menor que o scrape_timeout do Prometheus (10s), para a falha ser registrada como probe_success 0.
+    timeout: 5s
+    http:
+      method: GET
+      valid_status_codes: []   # vazio = qualquer 2xx
+      follow_redirects: false
+      preferred_ip_protocol: ip4
+      ip_protocol_fallback: false

@@ -1,0 +1,12 @@
+# Alvos do health check (file_sd). Rótulos: project (sistema) e endpoint (live | ready).
+# O host é o alias de rede único da API em cada projeto (cadastro-api em cadastro_default, legado-api em legado_default); o alias `api` é ambíguo entre as duas redes.
+# live = processo responde; ready = dependências obrigatórias (503 se falharem). Endpoints anônimos, só na rede interna.
+# WebAPI não está aqui: não expõe /health/* e não tem compose.
+- targets: ["http://cadastro-api:8080/health/live"]
+  labels: {project: cadastro, endpoint: live}
+- targets: ["http://cadastro-api:8080/health/ready"]
+  labels: {project: cadastro, endpoint: ready}
+- targets: ["http://legado-api:8080/health/live"]
+  labels: {project: legado, endpoint: live}
+- targets: ["http://legado-api:8080/health/ready"]
+  labels: {project: legado, endpoint: ready}

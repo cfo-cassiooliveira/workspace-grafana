@@ -1,0 +1,994 @@
+{
+  "uid": "graylog-platform",
+  "title": "Graylog - Plataforma",
+  "description": "Visão da plataforma de logs: volume e erros por serviço e serviços do workspace que pararam de enviar logs. Só agregações.",
+  "tags": [
+    "graylog",
+    "plataforma",
+    "logs"
+  ],
+  "links": [
+    {
+      "type": "link",
+      "title": "Abrir erros no Graylog",
+      "url": "http://localhost:9000/search?q=level%3A%5B0%20TO%203%5D&rangetype=relative&relative=21600",
+      "targetBlank": true,
+      "icon": "external link",
+      "tooltip": "Abre os erros recentes no Graylog (requer login no Graylog)"
+    }
+  ],
+  "panels": [
+    {
+      "id": 1,
+      "datasource": {
+        "type": "grafana-opensearch-datasource",
+        "uid": "graylog-opensearch"
+      },
+      "type": "stat",
+      "title": "Serviços sem log",
+      "description": "Um cartão por serviço esperado do workspace. Vermelho com \"Sem logs\" = o serviço não enviou nenhum log nos últimos 15 minutos (independe do intervalo do dashboard). Lista esperada: cadastro-api, cadastro-web, legado-api, legado-web, keycloak-server, sonarqube, grafana. Logs sintéticos do smoke test (smoke_test:true) não contam, para não mascarar uma queda real.",
+      "gridPos": {
+        "x": 0,
+        "y": 0,
+        "w": 24,
+        "h": 4
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-opensearch-datasource",
+            "uid": "graylog-opensearch"
+          },
+          "query": "service_name:\"cadastro-api\" AND NOT smoke_test:true",
+          "alias": "cadastro-api",
+          "timeField": "timestamp",
+          "metrics": [
+            {
+              "type": "count",
+              "id": "1"
+            }
+          ],
+          "bucketAggs": [
+            {
+              "type": "date_histogram",
+              "id": "2",
+              "field": "timestamp",
+              "settings": {
+                "interval": "auto",
+                "min_doc_count": "0"
+              }
+            }
+          ]
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "grafana-opensearch-datasource",
+            "uid": "graylog-opensearch"
+          },
+          "query": "service_name:\"cadastro-web\" AND NOT smoke_test:true",
+          "alias": "cadastro-web",
+          "timeField": "timestamp",
+          "metrics": [
+            {
+              "type": "count",
+              "id": "1"
+            }
+          ],
+          "bucketAggs": [
+            {
+              "type": "date_histogram",
+              "id": "2",
+              "field": "timestamp",
+              "settings": {
+                "interval": "auto",
+                "min_doc_count": "0"
+              }
+            }
+          ]
+        },
+        {
+          "refId": "C",
+          "datasource": {
+            "type": "grafana-opensearch-datasource",
+            "uid": "graylog-opensearch"
+          },
+          "query": "service_name:\"legado-api\" AND NOT smoke_test:true",
+          "alias": "legado-api",
+          "timeField": "timestamp",
+          "metrics": [
+            {
+              "type": "count",
+              "id": "1"
+            }
+          ],
+          "bucketAggs": [
+            {
+              "type": "date_histogram",
+              "id": "2",
+              "field": "timestamp",
+              "settings": {
+                "interval": "auto",
+                "min_doc_count": "0"
+              }
+            }
+          ]
+        },
+        {
+          "refId": "D",
+          "datasource": {
+            "type": "grafana-opensearch-datasource",
+            "uid": "graylog-opensearch"
+          },
+          "query": "service_name:\"legado-web\" AND NOT smoke_test:true",
+          "alias": "legado-web",
+          "timeField": "timestamp",
+          "metrics": [
+            {
+              "type": "count",
+              "id": "1"
+            }
+          ],
+          "bucketAggs": [
+            {
+              "type": "date_histogram",
+              "id": "2",
+              "field": "timestamp",
+              "settings": {
+                "interval": "auto",
+                "min_doc_count": "0"
+              }
+            }
+          ]
+        },
+        {
+          "refId": "E",
+          "datasource": {
+            "type": "grafana-opensearch-datasource",
+            "uid": "graylog-opensearch"
+          },
+          "query": "service_name:\"keycloak-server\" AND NOT smoke_test:true",
+          "alias": "keycloak-server",
+          "timeField": "timestamp",
+          "metrics": [
+            {
+              "type": "count",
+              "id": "1"
+            }
+          ],
+          "bucketAggs": [
+            {
+              "type": "date_histogram",
+              "id": "2",
+              "field": "timestamp",
+              "settings": {
+                "interval": "auto",
+                "min_doc_count": "0"
+              }
+            }
+          ]
+        },
+        {
+          "refId": "F",
+          "datasource": {
+            "type": "grafana-opensearch-datasource",
+            "uid": "graylog-opensearch"
+          },
+          "query": "service_name:\"sonarqube\" AND NOT smoke_test:true",
+          "alias": "sonarqube",
+          "timeField": "timestamp",
+          "metrics": [
+            {
+              "type": "count",
+              "id": "1"
+            }
+          ],
+          "bucketAggs": [
+            {
+              "type": "date_histogram",
+              "id": "2",
+              "field": "timestamp",
+              "settings": {
+                "interval": "auto",
+                "min_doc_count": "0"
+              }
+            }
+          ]
+        },
+        {
+          "refId": "G",
+          "datasource": {
+            "type": "grafana-opensearch-datasource",
+            "uid": "graylog-opensearch"
+          },
+          "query": "service_name:\"grafana\" AND NOT smoke_test:true",
+          "alias": "grafana",
+          "timeField": "timestamp",
+          "metrics": [
+            {
+              "type": "count",
+              "id": "1"
+            }
+          ],
+          "bucketAggs": [
+            {
+              "type": "date_histogram",
+              "id": "2",
+              "field": "timestamp",
+              "settings": {
+                "interval": "auto",
+                "min_doc_count": "0"
+              }
+            }
+          ]
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "sum"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "value_and_name"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "noValue": "Sem logs",
+          "unit": "short",
+          "decimals": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "green",
+                "value": 1
+              }
+            ]
+          },
+          "mappings": [
+            {
+              "type": "special",
+              "options": {
+                "match": "null+nan",
+                "result": {
+                  "text": "Sem logs",
+                  "color": "red"
+                }
+              }
+            },
+            {
+              "type": "value",
+              "options": {
+                "0": {
+                  "text": "Sem logs",
+                  "color": "red"
+                }
+              }
+            }
+          ]
+        },
+        "overrides": []
+      },
+      "timeFrom": "15m",
+      "hideTimeOverride": true
+    },
+    {
+      "id": 3,
+      "datasource": {
+        "type": "grafana-opensearch-datasource",
+        "uid": "graylog-opensearch"
+      },
+      "type": "stat",
+      "title": "Logs no período",
+      "description": "Total de linhas de log recebidas de todos os serviços.",
+      "gridPos": {
+        "x": 0,
+        "y": 4,
+        "w": 8,
+        "h": 4
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-opensearch-datasource",
+            "uid": "graylog-opensearch"
+          },
+          "query": "* AND NOT smoke_test:true",
+          "alias": "Logs",
+          "timeField": "timestamp",
+          "metrics": [
+            {
+              "type": "count",
+              "id": "1"
+            }
+          ],
+          "bucketAggs": [
+            {
+              "type": "date_histogram",
+              "id": "2",
+              "field": "timestamp",
+              "settings": {
+                "interval": "auto",
+                "min_doc_count": "0"
+              }
+            }
+          ]
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "sum"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "value_and_name"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "noValue": "Sem dados no período selecionado",
+          "unit": "short",
+          "decimals": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "blue",
+                "value": null
+              }
+            ]
+          },
+          "mappings": []
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 4,
+      "datasource": {
+        "type": "grafana-opensearch-datasource",
+        "uid": "graylog-opensearch"
+      },
+      "type": "stat",
+      "title": "Erros no período",
+      "description": "Linhas com nível Error ou mais grave em qualquer serviço (level <= 3).",
+      "gridPos": {
+        "x": 8,
+        "y": 4,
+        "w": 8,
+        "h": 4
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-opensearch-datasource",
+            "uid": "graylog-opensearch"
+          },
+          "query": "level:[0 TO 3] AND NOT smoke_test:true",
+          "alias": "Erros",
+          "timeField": "timestamp",
+          "metrics": [
+            {
+              "type": "count",
+              "id": "1"
+            }
+          ],
+          "bucketAggs": [
+            {
+              "type": "date_histogram",
+              "id": "2",
+              "field": "timestamp",
+              "settings": {
+                "interval": "auto",
+                "min_doc_count": "0"
+              }
+            }
+          ]
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "sum"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "value_and_name"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "noValue": "Sem dados no período selecionado",
+          "unit": "short",
+          "decimals": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 1
+              }
+            ]
+          },
+          "mappings": [
+            {
+              "type": "special",
+              "options": {
+                "match": "null+nan",
+                "result": {
+                  "text": "0 erros",
+                  "color": "green"
+                }
+              }
+            }
+          ]
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 5,
+      "datasource": {
+        "type": "grafana-opensearch-datasource",
+        "uid": "graylog-opensearch"
+      },
+      "type": "stat",
+      "title": "Logs dos esperados",
+      "description": "Logs somados dos serviços esperados do workspace; sem valor significa plataforma muda.",
+      "gridPos": {
+        "x": 16,
+        "y": 4,
+        "w": 8,
+        "h": 4
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-opensearch-datasource",
+            "uid": "graylog-opensearch"
+          },
+          "query": "service_name:(\"cadastro-api\" OR \"cadastro-web\" OR \"legado-api\" OR \"legado-web\" OR \"keycloak-server\" OR \"sonarqube\" OR \"grafana\") AND NOT smoke_test:true",
+          "alias": "Logs dos esperados",
+          "timeField": "timestamp",
+          "metrics": [
+            {
+              "type": "count",
+              "id": "1"
+            }
+          ],
+          "bucketAggs": [
+            {
+              "type": "date_histogram",
+              "id": "2",
+              "field": "timestamp",
+              "settings": {
+                "interval": "auto",
+                "min_doc_count": "0"
+              }
+            }
+          ]
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "sum"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "value_and_name"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "noValue": "Sem dados no período selecionado",
+          "unit": "short",
+          "decimals": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "blue",
+                "value": null
+              }
+            ]
+          },
+          "mappings": [
+            {
+              "type": "special",
+              "options": {
+                "match": "null+nan",
+                "result": {
+                  "text": "Sem logs",
+                  "color": "red"
+                }
+              }
+            }
+          ]
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 6,
+      "datasource": {
+        "type": "grafana-opensearch-datasource",
+        "uid": "graylog-opensearch"
+      },
+      "type": "timeseries",
+      "title": "Volume de logs por serviço",
+      "description": "Linhas de log por serviço ao longo do tempo (10 maiores).",
+      "gridPos": {
+        "x": 0,
+        "y": 8,
+        "w": 12,
+        "h": 12
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-opensearch-datasource",
+            "uid": "graylog-opensearch"
+          },
+          "query": "* AND NOT smoke_test:true",
+          "alias": "",
+          "timeField": "timestamp",
+          "metrics": [
+            {
+              "type": "count",
+              "id": "1"
+            }
+          ],
+          "bucketAggs": [
+            {
+              "type": "terms",
+              "id": "3",
+              "field": "service_name",
+              "settings": {
+                "size": "10",
+                "order": "desc",
+                "orderBy": "_count",
+                "min_doc_count": "1"
+              }
+            },
+            {
+              "type": "date_histogram",
+              "id": "2",
+              "field": "timestamp",
+              "settings": {
+                "interval": "auto",
+                "min_doc_count": "0"
+              }
+            }
+          ]
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "noValue": "Sem dados no período selecionado",
+          "unit": "short",
+          "custom": {
+            "drawStyle": "bars",
+            "fillOpacity": 70,
+            "stacking": {
+              "mode": "normal",
+              "group": "A"
+            },
+            "lineWidth": 1
+          }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 7,
+      "datasource": {
+        "type": "grafana-opensearch-datasource",
+        "uid": "graylog-opensearch"
+      },
+      "type": "timeseries",
+      "title": "Erros por serviço",
+      "description": "Linhas Error ou mais graves por serviço ao longo do tempo.",
+      "gridPos": {
+        "x": 12,
+        "y": 8,
+        "w": 12,
+        "h": 12
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-opensearch-datasource",
+            "uid": "graylog-opensearch"
+          },
+          "query": "level:[0 TO 3] AND NOT smoke_test:true",
+          "alias": "",
+          "timeField": "timestamp",
+          "metrics": [
+            {
+              "type": "count",
+              "id": "1"
+            }
+          ],
+          "bucketAggs": [
+            {
+              "type": "terms",
+              "id": "3",
+              "field": "service_name",
+              "settings": {
+                "size": "10",
+                "order": "desc",
+                "orderBy": "_count",
+                "min_doc_count": "1"
+              }
+            },
+            {
+              "type": "date_histogram",
+              "id": "2",
+              "field": "timestamp",
+              "settings": {
+                "interval": "auto",
+                "min_doc_count": "0"
+              }
+            }
+          ]
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "noValue": "Sem dados no período selecionado",
+          "unit": "short",
+          "custom": {
+            "drawStyle": "bars",
+            "fillOpacity": 70,
+            "stacking": {
+              "mode": "normal",
+              "group": "A"
+            },
+            "lineWidth": 1
+          }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 2,
+      "datasource": {
+        "type": "grafana-opensearch-datasource",
+        "uid": "graylog-opensearch"
+      },
+      "type": "table",
+      "title": "Taxa de erro por serviço (%)",
+      "description": "Erros (level <= 3) divididos pelo total de logs de cada serviço no intervalo. Ordenar pela coluna de taxa mostra os serviços mais instáveis. Serviço sem erros mostra 0 e 0%. Logs sintéticos do smoke test não contam.",
+      "gridPos": {
+        "x": 0,
+        "y": 20,
+        "w": 24,
+        "h": 10
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-opensearch-datasource",
+            "uid": "graylog-opensearch"
+          },
+          "query": "* AND NOT smoke_test:true",
+          "alias": "",
+          "timeField": "timestamp",
+          "metrics": [
+            {
+              "type": "count",
+              "id": "1"
+            }
+          ],
+          "bucketAggs": [
+            {
+              "type": "terms",
+              "id": "2",
+              "field": "service_name",
+              "settings": {
+                "size": "20",
+                "order": "desc",
+                "orderBy": "_count",
+                "min_doc_count": "1"
+              }
+            }
+          ]
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "grafana-opensearch-datasource",
+            "uid": "graylog-opensearch"
+          },
+          "query": "level:[0 TO 3] AND NOT smoke_test:true",
+          "alias": "",
+          "timeField": "timestamp",
+          "metrics": [
+            {
+              "type": "count",
+              "id": "1"
+            }
+          ],
+          "bucketAggs": [
+            {
+              "type": "terms",
+              "id": "2",
+              "field": "service_name",
+              "settings": {
+                "size": "20",
+                "order": "desc",
+                "orderBy": "_count",
+                "min_doc_count": "1"
+              }
+            }
+          ]
+        }
+      ],
+      "transformations": [
+        {
+          "id": "joinByField",
+          "options": {
+            "byField": "service_name",
+            "mode": "outer"
+          }
+        },
+        {
+          "id": "calculateField",
+          "options": {
+            "mode": "reduceRow",
+            "reduce": {
+              "reducer": "sum",
+              "include": [
+                "Count 2"
+              ]
+            },
+            "nullValueMode": "zero",
+            "alias": "Erros",
+            "replaceFields": false
+          }
+        },
+        {
+          "id": "calculateField",
+          "options": {
+            "mode": "binary",
+            "binary": {
+              "left": {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Erros"
+                }
+              },
+              "operator": "/",
+              "right": {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Count 1"
+                }
+              }
+            },
+            "alias": "Taxa de erro",
+            "replaceFields": false
+          }
+        },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Count 2": true
+            },
+            "indexByName": {
+              "service_name": 0,
+              "Taxa de erro": 1,
+              "Erros": 2,
+              "Count 1": 3
+            },
+            "renameByName": {
+              "service_name": "Serviço",
+              "Count 1": "Logs"
+            }
+          }
+        }
+      ],
+      "options": {
+        "showHeader": true,
+        "sortBy": [
+          {
+            "displayName": "Taxa de erro",
+            "desc": true
+          }
+        ],
+        "cellHeight": "sm"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "noValue": "Sem dados no período selecionado",
+          "custom": {
+            "align": "auto",
+            "minWidth": 50,
+            "cellOptions": {
+              "type": "auto",
+              "wrapText": true
+            }
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Taxa de erro"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "percentunit"
+              },
+              {
+                "id": "decimals",
+                "value": 2
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-text"
+                }
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": null
+                    },
+                    {
+                      "color": "yellow",
+                      "value": 0.01
+                    },
+                    {
+                      "color": "red",
+                      "value": 0.05
+                    }
+                  ]
+                }
+              },
+              {
+                "id": "noValue",
+                "value": "0%"
+              },
+              {
+                "id": "custom.width",
+                "value": 125
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Erros"
+            },
+            "properties": [
+              {
+                "id": "decimals",
+                "value": 0
+              },
+              {
+                "id": "noValue",
+                "value": "0"
+              },
+              {
+                "id": "custom.width",
+                "value": 50
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Logs"
+            },
+            "properties": [
+              {
+                "id": "decimals",
+                "value": 0
+              },
+              {
+                "id": "custom.width",
+                "value": 55
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Serviço"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 90
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ],
+  "editable": false,
+  "schemaVersion": 42,
+  "graphTooltip": 1,
+  "refresh": "1m",
+  "time": {
+    "from": "now-6h",
+    "to": "now"
+  },
+  "timezone": "browser",
+  "templating": {
+    "list": []
+  },
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": {
+          "type": "grafana",
+          "uid": "-- Grafana --"
+        },
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Anotações",
+        "type": "dashboard"
+      }
+    ]
+  }
+}

@@ -1,0 +1,725 @@
+{
+  "uid": "keycloak-authentication",
+  "title": "Keycloak - Autenticação",
+  "description": "Logins com sucesso e falha, falhas em rajada e eventos por tipo, cliente e realm, a partir da auditoria do Keycloak no Graylog. Somente agregações: sem usuário, e-mail, IP nem login mascarado. CAMPOS A CONFIRMAR contra logs reais: type, kind, client_id, realm_id (ver README).",
+  "tags": [
+    "keycloak",
+    "autenticacao",
+    "lgpd-agregado"
+  ],
+  "schemaVersion": 42,
+  "editable": false,
+  "graphTooltip": 1,
+  "refresh": "1m",
+  "time": {
+    "from": "now-6h",
+    "to": "now"
+  },
+  "timepicker": {
+    "refresh_intervals": [
+      "30s",
+      "1m",
+      "5m",
+      "15m"
+    ]
+  },
+  "templating": {
+    "list": []
+  },
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": {
+          "type": "grafana",
+          "uid": "-- Grafana --"
+        },
+        "enable": true,
+        "hide": true,
+        "name": "Annotations"
+      }
+    ]
+  },
+  "links": [
+    {
+      "title": "Abrir no Graylog (eventos do Keycloak)",
+      "type": "link",
+      "icon": "external link",
+      "url": "http://localhost:9000/search?q=service_name%3Akeycloak&rangetype=relative&relative=21600",
+      "targetBlank": true,
+      "tooltip": "Drill-down: abre a busca do Graylog; o login no Graylog é separado e controla o acesso aos eventos brutos."
+    }
+  ],
+  "panels": [
+    {
+      "id": 1,
+      "type": "stat",
+      "title": "Logins com sucesso",
+      "description": "Eventos LOGIN no período. Campo a confirmar: type=LOGIN.",
+      "gridPos": {
+        "h": 5,
+        "w": 12,
+        "x": 0,
+        "y": 0
+      },
+      "datasource": {
+        "type": "grafana-opensearch-datasource",
+        "uid": "graylog-opensearch"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-opensearch-datasource",
+            "uid": "graylog-opensearch"
+          },
+          "query": "service_name:keycloak AND kind:user AND type:LOGIN",
+          "alias": "Sucesso",
+          "timeField": "timestamp",
+          "metrics": [
+            {
+              "id": "1",
+              "type": "count"
+            }
+          ],
+          "bucketAggs": [
+            {
+              "id": "2",
+              "type": "date_histogram",
+              "field": "timestamp",
+              "settings": {
+                "interval": "auto",
+                "min_doc_count": "0"
+              }
+            }
+          ]
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "noValue": "Sem logins no período",
+          "unit": "short",
+          "decimals": 0,
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "green"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "sum"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "area",
+        "textMode": "value",
+        "justifyMode": "center"
+      }
+    },
+    {
+      "id": 2,
+      "type": "stat",
+      "title": "Logins com falha",
+      "description": "Eventos LOGIN_ERROR no período. Campo a confirmar: type=LOGIN_ERROR.",
+      "gridPos": {
+        "h": 5,
+        "w": 12,
+        "x": 12,
+        "y": 0
+      },
+      "datasource": {
+        "type": "grafana-opensearch-datasource",
+        "uid": "graylog-opensearch"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-opensearch-datasource",
+            "uid": "graylog-opensearch"
+          },
+          "query": "service_name:keycloak AND kind:user AND type:LOGIN_ERROR",
+          "alias": "Falha",
+          "timeField": "timestamp",
+          "metrics": [
+            {
+              "id": "1",
+              "type": "count"
+            }
+          ],
+          "bucketAggs": [
+            {
+              "id": "2",
+              "type": "date_histogram",
+              "field": "timestamp",
+              "settings": {
+                "interval": "auto",
+                "min_doc_count": "0"
+              }
+            }
+          ]
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "noValue": "Sem falhas no período",
+          "unit": "short",
+          "decimals": 0,
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "red"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "sum"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "area",
+        "textMode": "value",
+        "justifyMode": "center"
+      }
+    },
+    {
+      "id": 3,
+      "type": "timeseries",
+      "title": "Logins com sucesso x falha ao longo do tempo",
+      "description": "Contagem de LOGIN e LOGIN_ERROR por intervalo. Se o OpenSearch estiver fora, o painel mostra o erro do datasource.",
+      "gridPos": {
+        "h": 9,
+        "w": 12,
+        "x": 0,
+        "y": 5
+      },
+      "datasource": {
+        "type": "grafana-opensearch-datasource",
+        "uid": "graylog-opensearch"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-opensearch-datasource",
+            "uid": "graylog-opensearch"
+          },
+          "query": "service_name:keycloak AND kind:user AND type:LOGIN",
+          "alias": "Sucesso",
+          "timeField": "timestamp",
+          "metrics": [
+            {
+              "id": "1",
+              "type": "count"
+            }
+          ],
+          "bucketAggs": [
+            {
+              "id": "2",
+              "type": "date_histogram",
+              "field": "timestamp",
+              "settings": {
+                "interval": "auto",
+                "min_doc_count": "0"
+              }
+            }
+          ]
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "grafana-opensearch-datasource",
+            "uid": "graylog-opensearch"
+          },
+          "query": "service_name:keycloak AND kind:user AND type:LOGIN_ERROR",
+          "alias": "Falha",
+          "timeField": "timestamp",
+          "metrics": [
+            {
+              "id": "1",
+              "type": "count"
+            }
+          ],
+          "bucketAggs": [
+            {
+              "id": "2",
+              "type": "date_histogram",
+              "field": "timestamp",
+              "settings": {
+                "interval": "auto",
+                "min_doc_count": "0"
+              }
+            }
+          ]
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "noValue": "Sem eventos de login no período",
+          "unit": "short",
+          "decimals": 0,
+          "custom": {
+            "drawStyle": "bars",
+            "fillOpacity": 60,
+            "stacking": {
+              "mode": "none"
+            },
+            "lineWidth": 1
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Sucesso"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "green"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Falha"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "red"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    },
+    {
+      "id": 4,
+      "type": "timeseries",
+      "title": "Falhas de login em rajada (janelas de 5 min)",
+      "description": "LOGIN_ERROR por janela de 5 minutos. A linha tracejada em 20 é o limiar do alerta do Graylog (força bruta / credential stuffing).",
+      "gridPos": {
+        "h": 9,
+        "w": 12,
+        "x": 12,
+        "y": 5
+      },
+      "datasource": {
+        "type": "grafana-opensearch-datasource",
+        "uid": "graylog-opensearch"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-opensearch-datasource",
+            "uid": "graylog-opensearch"
+          },
+          "query": "service_name:keycloak AND kind:user AND type:LOGIN_ERROR",
+          "alias": "Falhas em 5 min",
+          "timeField": "timestamp",
+          "metrics": [
+            {
+              "id": "1",
+              "type": "count"
+            }
+          ],
+          "bucketAggs": [
+            {
+              "id": "2",
+              "type": "date_histogram",
+              "field": "timestamp",
+              "settings": {
+                "interval": "5m",
+                "min_doc_count": "0"
+              }
+            }
+          ]
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "noValue": "Sem falhas no período",
+          "unit": "short",
+          "decimals": 0,
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 20
+              }
+            ]
+          },
+          "custom": {
+            "drawStyle": "bars",
+            "fillOpacity": 70,
+            "lineWidth": 1,
+            "thresholdsStyle": {
+              "mode": "dashed"
+            }
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": false
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      }
+    },
+    {
+      "id": 5,
+      "type": "table",
+      "title": "Eventos por tipo",
+      "description": "Contagem de eventos de usuário por tipo (LOGIN, LOGIN_ERROR, LOGOUT, LEGACY_* da migração etc.). Campo a confirmar: type.",
+      "gridPos": {
+        "h": 9,
+        "w": 8,
+        "x": 0,
+        "y": 14
+      },
+      "datasource": {
+        "type": "grafana-opensearch-datasource",
+        "uid": "graylog-opensearch"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-opensearch-datasource",
+            "uid": "graylog-opensearch"
+          },
+          "query": "service_name:keycloak AND kind:user",
+          "timeField": "timestamp",
+          "metrics": [
+            {
+              "id": "1",
+              "type": "count"
+            }
+          ],
+          "bucketAggs": [
+            {
+              "id": "2",
+              "type": "terms",
+              "field": "type",
+              "settings": {
+                "size": "20",
+                "order": "desc",
+                "orderBy": "_count",
+                "min_doc_count": "1"
+              }
+            }
+          ]
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "noValue": "Sem eventos no período",
+          "custom": {
+            "cellOptions": {
+              "type": "auto",
+              "wrapText": true
+            }
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Tipo"
+            },
+            "properties": [
+              {
+                "id": "custom.minWidth",
+                "value": 180
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Eventos"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 90
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm",
+        "sortBy": [
+          {
+            "displayName": "Eventos",
+            "desc": true
+          }
+        ]
+      },
+      "transformations": [
+        {
+          "id": "organize",
+          "options": {
+            "renameByName": {
+              "type": "Tipo",
+              "Count": "Eventos"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "type": "table",
+      "title": "Eventos por cliente",
+      "description": "Contagem de eventos de usuário por client OIDC (client_id é o id técnico do aplicativo, não dado pessoal). Campo a confirmar: client_id.",
+      "gridPos": {
+        "h": 9,
+        "w": 8,
+        "x": 8,
+        "y": 14
+      },
+      "datasource": {
+        "type": "grafana-opensearch-datasource",
+        "uid": "graylog-opensearch"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-opensearch-datasource",
+            "uid": "graylog-opensearch"
+          },
+          "query": "service_name:keycloak AND kind:user",
+          "timeField": "timestamp",
+          "metrics": [
+            {
+              "id": "1",
+              "type": "count"
+            }
+          ],
+          "bucketAggs": [
+            {
+              "id": "2",
+              "type": "terms",
+              "field": "client_id",
+              "settings": {
+                "size": "20",
+                "order": "desc",
+                "orderBy": "_count",
+                "min_doc_count": "1"
+              }
+            }
+          ]
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "noValue": "Sem eventos no período",
+          "custom": {
+            "cellOptions": {
+              "type": "auto",
+              "wrapText": true
+            }
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Cliente"
+            },
+            "properties": [
+              {
+                "id": "custom.minWidth",
+                "value": 180
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Eventos"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 90
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm",
+        "sortBy": [
+          {
+            "displayName": "Eventos",
+            "desc": true
+          }
+        ]
+      },
+      "transformations": [
+        {
+          "id": "organize",
+          "options": {
+            "renameByName": {
+              "client_id": "Cliente",
+              "Count": "Eventos"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "type": "table",
+      "title": "Eventos por realm",
+      "description": "Contagem de eventos de usuário por realm (identificador técnico do realm, UUID: os logs de auditoria não trazem o nome do realm). Campo a confirmar: realm_id.",
+      "gridPos": {
+        "h": 9,
+        "w": 8,
+        "x": 16,
+        "y": 14
+      },
+      "datasource": {
+        "type": "grafana-opensearch-datasource",
+        "uid": "graylog-opensearch"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-opensearch-datasource",
+            "uid": "graylog-opensearch"
+          },
+          "query": "service_name:keycloak AND kind:user",
+          "timeField": "timestamp",
+          "metrics": [
+            {
+              "id": "1",
+              "type": "count"
+            }
+          ],
+          "bucketAggs": [
+            {
+              "id": "2",
+              "type": "terms",
+              "field": "realm_id",
+              "settings": {
+                "size": "20",
+                "order": "desc",
+                "orderBy": "_count",
+                "min_doc_count": "1"
+              }
+            }
+          ]
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "noValue": "Sem eventos no período",
+          "custom": {
+            "cellOptions": {
+              "type": "auto",
+              "wrapText": true
+            }
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Realm"
+            },
+            "properties": [
+              {
+                "id": "custom.minWidth",
+                "value": 180
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Eventos"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 90
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm",
+        "sortBy": [
+          {
+            "displayName": "Eventos",
+            "desc": true
+          }
+        ]
+      },
+      "transformations": [
+        {
+          "id": "organize",
+          "options": {
+            "renameByName": {
+              "realm_id": "Realm",
+              "Count": "Eventos"
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,20 @@
+# Pontos de contato (v1, decisão P4): SEM notificação externa. O estado dos alertas (Normal/Pending/Firing) fica
+# visível só na UI do Grafana (Alertas > Regras de alerta).
+# O Grafana 13.3 NÃO aceita contact point sem integração (um "null receiver" vazio é ignorado e a política falha com
+# "receiver does not exist", derrubando o provisioning). Por isso a garantia de "nada sai" tem duas camadas:
+#   1. policies.yaml silencia TODAS as notificações com um mute timing permanente (nenhuma integração é chamada);
+#   2. este contact point usa e-mail para um endereço reservado (.invalid, RFC 6761) e o SMTP do Grafana fica
+#      desligado (GF_SMTP_ENABLED=false no compose): mesmo sem o mute, não há como enviar.
+# Para notificar no futuro, crie outro contact point aqui, aponte policies.yaml para ele e remova o mute (exige ADR e aprovação).
+apiVersion: 1
+
+contactPoints:
+  - orgId: 1
+    name: ui-only
+    receivers:
+      - uid: ui-only-email
+        type: email
+        disableResolveMessage: true
+        settings:
+          addresses: ui-only@grafana.invalid
+          singleEmail: true

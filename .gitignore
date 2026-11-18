@@ -1,0 +1,12 @@
+# Segredos locais (Art. IV.4)
+.env
+# Backups do volume do Grafana (contêm usuários e preferências)
+.backups/
+# IDE
+.vs/
+.idea/
+prometheus/targets/zz-smoke-*.yml
+
+# E2E Playwright (artefatos e dependências locais)
+tests/e2e/.artifacts/
+tests/e2e/node_modules/

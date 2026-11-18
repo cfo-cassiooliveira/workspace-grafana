@@ -1,0 +1,16 @@
+# Integração opcional com o Graylog (projeto C:\Workspace\graylog). Requer o Graylog de pé antes.
+# Uso:
+#   docker compose -f docker-compose.yml -f docker-compose.graylog.yml up -d
+#
+# O stdout do Grafana (JSON, GF_LOG_CONSOLE_FORMAT=json) vai pelo Docker logging driver GELF (UDP) para a porta publicada
+# do Graylog. Use 127.0.0.1 (não "localhost"): o daemon resolve localhost para ::1 (IPv6) e a porta é publicada só em IPv4.
+# A "tag" vira o campo service_name no pipeline do Graylog e leva ao stream "Grafana - Infra"; a regra 19-grafana-json do
+# Graylog mantém só level, logger e msg (login e e-mail de operador não são indexados, LGPD).
+# Atenção: subir SEM este arquivo recria o container com o driver padrão e os logs deixam de chegar ao Graylog.
+services:
+  grafana:
+    logging:
+      driver: gelf
+      options:
+        gelf-address: "udp://127.0.0.1:12201"
+        tag: grafana

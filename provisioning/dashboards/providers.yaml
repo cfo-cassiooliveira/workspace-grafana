@@ -1,0 +1,14 @@
+# Provider de dashboards (arquivos nativos do Grafana). Uma pasta no Grafana por subpasta daqui (cadastro, legado...).
+# Dashboards só por arquivo: allowUiUpdates false e disableDeletion true; para persistir uma edição, exporte o JSON e abra PR.
+apiVersion: 1
+
+providers:
+  - name: workspace
+    orgId: 1
+    type: file
+    disableDeletion: true
+    allowUiUpdates: false
+    updateIntervalSeconds: 30
+    options:
+      path: /etc/grafana/provisioning/dashboards
+      foldersFromFilesStructure: true

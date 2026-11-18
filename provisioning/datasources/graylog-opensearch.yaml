@@ -1,0 +1,28 @@
+# Datasource de logs: OpenSearch do Graylog, lido pelo opensearch-proxy (somente leitura, ADR-0004) na rede logs-ro.
+# Sem credenciais: o OpenSearch roda sem security plugin e só o proxy o alcança (rede logs-read). Em produção: security plugin + usuário somente leitura.
+apiVersion: 1
+
+datasources:
+  - name: Graylog OpenSearch
+    uid: graylog-opensearch
+    type: grafana-opensearch-datasource
+    access: proxy
+    # Proxy somente leitura (ADR-0004), nunca o OpenSearch direto; ele encaminha a opensearch:9200.
+    url: http://opensearch-ro:8080
+    isDefault: true
+    editable: false
+    jsonData:
+      flavor: opensearch
+      version: "3.7.0"
+      # Mitigação do risco residual do ADR-0001: só os índices dos index sets de aplicação do Graylog, todos gravados
+      # depois do pipeline de mascaramento LGPD. Ficam de fora gl-events/gl-system-events (internos do Graylog),
+      # top_queries-* e .plugins-* (internos do OpenSearch). Index set novo no Graylog exige incluir o prefixo aqui.
+      database: "cadastro_*,legado_*,keycloak_*,sonarqube_*,grafana_*,graylog_*"
+      timeField: timestamp
+      logMessageField: message
+      logLevelField: level
+      # PPL aceitaria "source=<qualquer índice>" e furaria o index pattern acima.
+      pplEnabled: false
+      serverless: false
+      maxConcurrentShardRequests: 5
+      timeInterval: 1m

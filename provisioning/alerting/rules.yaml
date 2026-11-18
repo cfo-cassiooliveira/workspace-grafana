@@ -1,0 +1,389 @@
+# Regras de alerta como código (T14/T17). Estado visível só na UI (sem notificação externa; ver contact-points.yaml).
+# Convenções: uma pasta por projeto (mesmos nomes das pastas dos dashboards), labels "project" e "severity" em toda regra.
+# Alertas do Graylog que já existem NÃO são duplicados (ver README, "Alertas"): aqui ficam só os complementares.
+# As regras de log leem o datasource graylog-opensearch; as de saúde das APIs, o prometheus.
+# As de log excluem mensagens sintéticas do smoke (smoke_test:true), como os alertas do Graylog.
+# A taxa de erros do Cadastro também exclui o ruído dos health checks (um erro por sondagem com o Keycloak parado): a falha de dependência é da regra api-down.
+apiVersion: 1
+
+groups:
+  # Taxa de erros do Cadastro: erros (level <= 3) sobre o total, em 5 min. Complementa o alerta do Graylog, que dispara por
+  # QUALQUER erro: este só dispara com proporção alta e volume mínimo (>= 10 logs), ignorando erro isolado em pouco tráfego.
+  - orgId: 1
+    name: cadastro-error-rate
+    folder: cadastro
+    interval: 1m
+    rules:
+      - uid: cadastro-error-rate
+        title: Cadastro - Taxa de erros alta
+        condition: C
+        for: 0s
+        noDataState: OK
+        execErrState: Error
+        isPaused: false
+        labels:
+          project: cadastro
+          severity: warning
+        annotations:
+          summary: "Mais de 20% dos logs do Cadastro são erros nos últimos 5 minutos (mínimo de 10 logs)."
+          description: "Veja o dashboard Cadastro - Visão geral e, no Graylog, o stream de erros do Cadastro. Os erros logados pelos health checks (KeycloakHealthCheck e DefaultHealthCheckService, um por sondagem enquanto o Keycloak está parado) ficam FORA da conta, no numerador e no denominador, para esta regra não disparar só porque o Keycloak caiu; a queda do Keycloak/dependência aparece em 'Plataforma - API fora do ar' (health/ready)."
+          __dashboardUid__: cadastro-overview
+          __panelId__: "6"
+        data:
+          - refId: A
+            relativeTimeRange: {from: 300, to: 0}
+            datasourceUid: graylog-opensearch
+            model:
+              refId: A
+              datasource: {type: grafana-opensearch-datasource, uid: graylog-opensearch}
+              queryType: lucene
+              query: 'service_name:cadastro-* AND level:<=3 AND NOT smoke_test:true AND NOT SourceContext:"Cadastro.Infrastructure.Keycloak.KeycloakHealthCheck" AND NOT SourceContext:"Microsoft.Extensions.Diagnostics.HealthChecks.DefaultHealthCheckService"'
+              timeField: timestamp
+              metrics: [{id: "1", type: count}]
+              bucketAggs: [{id: "2", type: date_histogram, field: timestamp, settings: {interval: 1m, min_doc_count: "0"}}]
+          - refId: B
+            relativeTimeRange: {from: 300, to: 0}
+            datasourceUid: graylog-opensearch
+            model:
+              refId: B
+              datasource: {type: grafana-opensearch-datasource, uid: graylog-opensearch}
+              queryType: lucene
+              query: 'service_name:cadastro-* AND NOT smoke_test:true AND NOT SourceContext:"Cadastro.Infrastructure.Keycloak.KeycloakHealthCheck" AND NOT SourceContext:"Microsoft.Extensions.Diagnostics.HealthChecks.DefaultHealthCheckService"'
+              timeField: timestamp
+              metrics: [{id: "1", type: count}]
+              bucketAggs: [{id: "2", type: date_histogram, field: timestamp, settings: {interval: 1m, min_doc_count: "0"}}]
+          - refId: R1
+            datasourceUid: __expr__
+            model: {refId: R1, type: reduce, expression: A, reducer: sum, settings: {mode: dropNN}, datasource: {type: __expr__, uid: __expr__}}
+          - refId: R2
+            datasourceUid: __expr__
+            model: {refId: R2, type: reduce, expression: B, reducer: sum, settings: {mode: dropNN}, datasource: {type: __expr__, uid: __expr__}}
+          # Proporção de erros, zerada quando há menos de 10 logs (volume mínimo).
+          - refId: M
+            datasourceUid: __expr__
+            model: {refId: M, type: math, expression: "($R2 >= 10) * ($R1 / $R2)", datasource: {type: __expr__, uid: __expr__}}
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              refId: C
+              type: threshold
+              expression: M
+              conditions: [{evaluator: {type: gt, params: [0.2]}}]
+              datasource: {type: __expr__, uid: __expr__}
+
+  - orgId: 1
+    name: legado-error-rate
+    folder: legado
+    interval: 1m
+    rules:
+      - uid: legado-error-rate
+        title: Legado - Taxa de erros alta
+        condition: C
+        for: 0s
+        noDataState: OK
+        execErrState: Error
+        isPaused: false
+        labels:
+          project: legado
+          severity: warning
+        annotations:
+          summary: "Mais de 20% dos logs do Legado são erros nos últimos 5 minutos (mínimo de 10 logs)."
+          description: "Veja o dashboard Legado - Visão geral e, no Graylog, os alertas de erros do Legado."
+          __dashboardUid__: legado-overview
+          __panelId__: "6"
+        data:
+          - refId: A
+            relativeTimeRange: {from: 300, to: 0}
+            datasourceUid: graylog-opensearch
+            model:
+              refId: A
+              datasource: {type: grafana-opensearch-datasource, uid: graylog-opensearch}
+              queryType: lucene
+              query: 'service_name:legado-* AND level:<=3 AND NOT smoke_test:true'
+              timeField: timestamp
+              metrics: [{id: "1", type: count}]
+              bucketAggs: [{id: "2", type: date_histogram, field: timestamp, settings: {interval: 1m, min_doc_count: "0"}}]
+          - refId: B
+            relativeTimeRange: {from: 300, to: 0}
+            datasourceUid: graylog-opensearch
+            model:
+              refId: B
+              datasource: {type: grafana-opensearch-datasource, uid: graylog-opensearch}
+              queryType: lucene
+              query: 'service_name:legado-* AND NOT smoke_test:true'
+              timeField: timestamp
+              metrics: [{id: "1", type: count}]
+              bucketAggs: [{id: "2", type: date_histogram, field: timestamp, settings: {interval: 1m, min_doc_count: "0"}}]
+          - refId: R1
+            datasourceUid: __expr__
+            model: {refId: R1, type: reduce, expression: A, reducer: sum, settings: {mode: dropNN}, datasource: {type: __expr__, uid: __expr__}}
+          - refId: R2
+            datasourceUid: __expr__
+            model: {refId: R2, type: reduce, expression: B, reducer: sum, settings: {mode: dropNN}, datasource: {type: __expr__, uid: __expr__}}
+          - refId: M
+            datasourceUid: __expr__
+            model: {refId: M, type: math, expression: "($R2 >= 10) * ($R1 / $R2)", datasource: {type: __expr__, uid: __expr__}}
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              refId: C
+              type: threshold
+              expression: M
+              conditions: [{evaluator: {type: gt, params: [0.2]}}]
+              datasource: {type: __expr__, uid: __expr__}
+
+  # Rajada de logins falhos no Keycloak: MESMO limiar do alerta do Graylog "Keycloak - Falhas de login em massa"
+  # (mais de 20 LOGIN_ERROR em 5 min). Aqui é só a visão no Grafana (estado na UI); nenhum dos dois notifica fora.
+  - orgId: 1
+    name: keycloak-login-burst
+    folder: keycloak
+    interval: 1m
+    rules:
+      - uid: keycloak-login-burst
+        title: Keycloak - Falhas de login em rajada
+        condition: C
+        for: 0s
+        noDataState: OK
+        execErrState: Error
+        isPaused: false
+        labels:
+          project: keycloak
+          severity: critical
+        annotations:
+          summary: "Mais de 20 logins falhos no Keycloak em 5 minutos (força bruta ou credential stuffing)."
+          description: "Veja o dashboard Keycloak - Autenticação; no Graylog, o alerta Keycloak - Falhas de login em massa usa o mesmo limiar."
+          __dashboardUid__: keycloak-authentication
+          __panelId__: "4"
+        data:
+          - refId: A
+            relativeTimeRange: {from: 300, to: 0}
+            datasourceUid: graylog-opensearch
+            model:
+              refId: A
+              datasource: {type: grafana-opensearch-datasource, uid: graylog-opensearch}
+              queryType: lucene
+              query: 'service_name:keycloak AND kind:user AND type:LOGIN_ERROR AND NOT smoke_test:true'
+              timeField: timestamp
+              metrics: [{id: "1", type: count}]
+              bucketAggs: [{id: "2", type: date_histogram, field: timestamp, settings: {interval: 1m, min_doc_count: "0"}}]
+          - refId: R1
+            datasourceUid: __expr__
+            model: {refId: R1, type: reduce, expression: A, reducer: sum, settings: {mode: dropNN}, datasource: {type: __expr__, uid: __expr__}}
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              refId: C
+              type: threshold
+              expression: R1
+              conditions: [{evaluator: {type: gt, params: [20]}}]
+              datasource: {type: __expr__, uid: __expr__}
+
+  # Plataforma: serviço sem logs. Conta quantos dos 7 serviços esperados enviaram log em 15 min; abaixo de 7 = algum parou.
+  # A lista é a mesma do cartão "Serviços sem log" do dashboard graylog-platform (o dashboard mostra QUAL serviço).
+  # Sem dados nenhum (Graylog/OpenSearch sem logs) também alerta. O Graylog não tem alerta equivalente.
+  - orgId: 1
+    name: platform-logs
+    folder: graylog
+    interval: 1m
+    rules:
+      - uid: platform-service-without-logs
+        title: Plataforma - Serviço sem logs
+        condition: C
+        for: 5m
+        noDataState: Alerting
+        execErrState: Error
+        isPaused: false
+        labels:
+          project: platform
+          severity: warning
+        annotations:
+          summary: "Algum serviço esperado (cadastro-api, cadastro-web, legado-api, legado-web, keycloak-server, sonarqube, grafana) não enviou logs em 15 minutos."
+          description: "Abra o dashboard Graylog - Plataforma, cartão Serviços sem log, para ver qual serviço parou."
+          __dashboardUid__: graylog-platform
+          __panelId__: "1"
+        data:
+          - refId: Q1
+            relativeTimeRange: {from: 900, to: 0}
+            datasourceUid: graylog-opensearch
+            model: {refId: Q1, datasource: {type: grafana-opensearch-datasource, uid: graylog-opensearch}, queryType: lucene, query: 'service_name:"cadastro-api" AND NOT smoke_test:true', timeField: timestamp, metrics: [{id: "1", type: count}], bucketAggs: [{id: "2", type: date_histogram, field: timestamp, settings: {interval: 5m, min_doc_count: "0"}}]}
+          - refId: R1
+            datasourceUid: __expr__
+            model: {refId: R1, type: reduce, expression: Q1, reducer: sum, settings: {mode: replaceNN, replaceWithValue: 0}, datasource: {type: __expr__, uid: __expr__}}
+          - refId: Q2
+            relativeTimeRange: {from: 900, to: 0}
+            datasourceUid: graylog-opensearch
+            model: {refId: Q2, datasource: {type: grafana-opensearch-datasource, uid: graylog-opensearch}, queryType: lucene, query: 'service_name:"cadastro-web" AND NOT smoke_test:true', timeField: timestamp, metrics: [{id: "1", type: count}], bucketAggs: [{id: "2", type: date_histogram, field: timestamp, settings: {interval: 5m, min_doc_count: "0"}}]}
+          - refId: R2
+            datasourceUid: __expr__
+            model: {refId: R2, type: reduce, expression: Q2, reducer: sum, settings: {mode: replaceNN, replaceWithValue: 0}, datasource: {type: __expr__, uid: __expr__}}
+          - refId: Q3
+            relativeTimeRange: {from: 900, to: 0}
+            datasourceUid: graylog-opensearch
+            model: {refId: Q3, datasource: {type: grafana-opensearch-datasource, uid: graylog-opensearch}, queryType: lucene, query: 'service_name:"legado-api" AND NOT smoke_test:true', timeField: timestamp, metrics: [{id: "1", type: count}], bucketAggs: [{id: "2", type: date_histogram, field: timestamp, settings: {interval: 5m, min_doc_count: "0"}}]}
+          - refId: R3
+            datasourceUid: __expr__
+            model: {refId: R3, type: reduce, expression: Q3, reducer: sum, settings: {mode: replaceNN, replaceWithValue: 0}, datasource: {type: __expr__, uid: __expr__}}
+          - refId: Q4
+            relativeTimeRange: {from: 900, to: 0}
+            datasourceUid: graylog-opensearch
+            model: {refId: Q4, datasource: {type: grafana-opensearch-datasource, uid: graylog-opensearch}, queryType: lucene, query: 'service_name:"legado-web" AND NOT smoke_test:true', timeField: timestamp, metrics: [{id: "1", type: count}], bucketAggs: [{id: "2", type: date_histogram, field: timestamp, settings: {interval: 5m, min_doc_count: "0"}}]}
+          - refId: R4
+            datasourceUid: __expr__
+            model: {refId: R4, type: reduce, expression: Q4, reducer: sum, settings: {mode: replaceNN, replaceWithValue: 0}, datasource: {type: __expr__, uid: __expr__}}
+          - refId: Q5
+            relativeTimeRange: {from: 900, to: 0}
+            datasourceUid: graylog-opensearch
+            model: {refId: Q5, datasource: {type: grafana-opensearch-datasource, uid: graylog-opensearch}, queryType: lucene, query: 'service_name:"keycloak-server" AND NOT smoke_test:true', timeField: timestamp, metrics: [{id: "1", type: count}], bucketAggs: [{id: "2", type: date_histogram, field: timestamp, settings: {interval: 5m, min_doc_count: "0"}}]}
+          - refId: R5
+            datasourceUid: __expr__
+            model: {refId: R5, type: reduce, expression: Q5, reducer: sum, settings: {mode: replaceNN, replaceWithValue: 0}, datasource: {type: __expr__, uid: __expr__}}
+          - refId: Q6
+            relativeTimeRange: {from: 900, to: 0}
+            datasourceUid: graylog-opensearch
+            model: {refId: Q6, datasource: {type: grafana-opensearch-datasource, uid: graylog-opensearch}, queryType: lucene, query: 'service_name:"sonarqube" AND NOT smoke_test:true', timeField: timestamp, metrics: [{id: "1", type: count}], bucketAggs: [{id: "2", type: date_histogram, field: timestamp, settings: {interval: 5m, min_doc_count: "0"}}]}
+          - refId: R6
+            datasourceUid: __expr__
+            model: {refId: R6, type: reduce, expression: Q6, reducer: sum, settings: {mode: replaceNN, replaceWithValue: 0}, datasource: {type: __expr__, uid: __expr__}}
+          - refId: Q7
+            relativeTimeRange: {from: 900, to: 0}
+            datasourceUid: graylog-opensearch
+            model: {refId: Q7, datasource: {type: grafana-opensearch-datasource, uid: graylog-opensearch}, queryType: lucene, query: 'service_name:"grafana" AND NOT smoke_test:true', timeField: timestamp, metrics: [{id: "1", type: count}], bucketAggs: [{id: "2", type: date_histogram, field: timestamp, settings: {interval: 5m, min_doc_count: "0"}}]}
+          - refId: R7
+            datasourceUid: __expr__
+            model: {refId: R7, type: reduce, expression: Q7, reducer: sum, settings: {mode: replaceNN, replaceWithValue: 0}, datasource: {type: __expr__, uid: __expr__}}
+          # Quantos dos 7 serviços esperados enviaram ao menos 1 log em 15 min (7 = todos).
+          - refId: M
+            datasourceUid: __expr__
+            model: {refId: M, type: math, expression: "($R1 > 0) + ($R2 > 0) + ($R3 > 0) + ($R4 > 0) + ($R5 > 0) + ($R6 > 0) + ($R7 > 0)", datasource: {type: __expr__, uid: __expr__}}
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              refId: C
+              type: threshold
+              expression: M
+              conditions: [{evaluator: {type: lt, params: [7]}}]
+              datasource: {type: __expr__, uid: __expr__}
+
+  # Saúde das APIs (T17, ADR-0003). O blackbox mede probe_success por endpoint; uma falha pode ser a API fora OU o nome do
+  # alvo não resolvendo (probe_ip_addr_hash == 0), então são DUAS regras com rótulo failure_kind diferente.
+  # `on(instance)`: casa a sonda com o hash do IP da mesma URL. project!="smoke" exclui os alvos falsos do smoke.
+  - orgId: 1
+    name: api-health
+    folder: graylog
+    interval: 1m
+    rules:
+      - uid: api-down
+        title: Plataforma - API fora do ar
+        condition: C
+        for: 3m
+        noDataState: OK
+        execErrState: Error
+        isPaused: false
+        labels:
+          project: platform
+          severity: critical
+          failure_kind: api_down
+        annotations:
+          summary: "O /health/ready de {{ $labels.project }} falha há mais de 3 minutos e o nome resolve: a API ou uma dependência obrigatória (banco, Keycloak) está fora do ar."
+          description: "Veja o dashboard Plataforma - Saúde das APIs. Se o live também falhar, o processo caiu; se só o ready falhar, é dependência."
+          __dashboardUid__: api-health
+          __panelId__: "1"
+        data:
+          - refId: A
+            relativeTimeRange: {from: 600, to: 0}
+            datasourceUid: prometheus
+            model:
+              refId: A
+              datasource: {type: prometheus, uid: prometheus}
+              expr: 'count by (project, endpoint) (probe_success{job="api-health",endpoint="ready",project!="smoke"} == 0 and on(instance) probe_ip_addr_hash{job="api-health",endpoint="ready",project!="smoke"} > 0)'
+              instant: true
+              range: false
+          - refId: R1
+            datasourceUid: __expr__
+            model: {refId: R1, type: reduce, expression: A, reducer: last, settings: {mode: dropNN}, datasource: {type: __expr__, uid: __expr__}}
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              refId: C
+              type: threshold
+              expression: R1
+              conditions: [{evaluator: {type: gt, params: [0]}}]
+              datasource: {type: __expr__, uid: __expr__}
+
+      # Ausência de dado: sem série de probe_success (blackbox/Prometheus parado, alvo removido) as regras acima ficam em OK por
+      # noDataState; esta regra cobre o buraco. Conta alvos com up == 0 (a sondagem falhou como scrape) e a falta total da série.
+      - uid: api-no-data
+        title: Plataforma - Sem dados de saúde das APIs
+        condition: C
+        for: 5m
+        noDataState: Alerting
+        execErrState: Error
+        isPaused: false
+        labels:
+          project: platform
+          severity: critical
+          failure_kind: no_data
+        annotations:
+          summary: "O Prometheus não tem dados de probe_success das APIs (ou a sondagem não roda) há mais de 5 minutos: nada garante que as APIs estejam no ar."
+          description: "Verifique os containers prometheus e blackbox (docker compose -f prometheus/docker-compose.metrics.yml ps). Enquanto isto durar, 'API fora do ar' e 'Alvo não resolve' não enxergam nada."
+          __dashboardUid__: api-health
+          __panelId__: "1"
+        data:
+          - refId: A
+            relativeTimeRange: {from: 600, to: 0}
+            datasourceUid: prometheus
+            model:
+              refId: A
+              datasource: {type: prometheus, uid: prometheus}
+              expr: 'sum(absent(probe_success{job="api-health",project!="smoke"}) or vector(0)) + sum(count(up{job="api-health",project!="smoke"} == 0) or vector(0))'
+              instant: true
+              range: false
+          - refId: R1
+            datasourceUid: __expr__
+            model: {refId: R1, type: reduce, expression: A, reducer: last, settings: {mode: dropNN}, datasource: {type: __expr__, uid: __expr__}}
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              refId: C
+              type: threshold
+              expression: R1
+              conditions: [{evaluator: {type: gt, params: [0]}}]
+              datasource: {type: __expr__, uid: __expr__}
+
+      - uid: api-target-unresolved
+        title: Plataforma - Alvo da API não resolve (DNS)
+        condition: C
+        for: 3m
+        noDataState: OK
+        execErrState: Error
+        isPaused: false
+        labels:
+          project: platform
+          severity: warning
+          failure_kind: dns
+        annotations:
+          summary: "O nome do alvo de {{ $labels.project }} não resolve na rede do blackbox: não é API fora do ar, é configuração."
+          description: "O container pode ter outro nome (projeto Compose, escala ou -p diferente). Ajuste prometheus/targets/apis.yml (ADR-0003)."
+          __dashboardUid__: api-health
+          __panelId__: "1"
+        data:
+          - refId: A
+            relativeTimeRange: {from: 600, to: 0}
+            datasourceUid: prometheus
+            model:
+              refId: A
+              datasource: {type: prometheus, uid: prometheus}
+              expr: 'count by (project, endpoint) (probe_success{job="api-health",endpoint="ready",project!="smoke"} == 0 and on(instance) probe_ip_addr_hash{job="api-health",endpoint="ready",project!="smoke"} == 0)'
+              instant: true
+              range: false
+          - refId: R1
+            datasourceUid: __expr__
+            model: {refId: R1, type: reduce, expression: A, reducer: last, settings: {mode: dropNN}, datasource: {type: __expr__, uid: __expr__}}
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              refId: C
+              type: threshold
+              expression: R1
+              conditions: [{evaluator: {type: gt, params: [0]}}]
+              datasource: {type: __expr__, uid: __expr__}

@@ -1,0 +1,51 @@
+{
+  "uid": "fixture-lgpd-nome",
+  "title": "Cadastro - Visão geral",
+  "description": "Fixture válida: só agregações por nível.",
+  "schemaVersion": 42,
+  "editable": false,
+  "tags": [
+    "fixture"
+  ],
+  "templating": {
+    "list": []
+  },
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": {
+          "type": "grafana",
+          "uid": "-- Grafana --"
+        },
+        "name": "Annotations"
+      }
+    ]
+  },
+  "panels": [
+    {
+      "type": "timeseries",
+      "title": "Logs por minuto e nível",
+      "datasource": {
+        "type": "grafana-opensearch-datasource",
+        "uid": "graylog-opensearch"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-opensearch-datasource",
+            "uid": "graylog-opensearch"
+          },
+          "query": "service_name:cadastro-api AND nome:x*",
+          "bucketAggs": [
+            {
+              "type": "terms",
+              "field": "level_name"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

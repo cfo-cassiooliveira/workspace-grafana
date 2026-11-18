@@ -1,0 +1,87 @@
+# Métricas e health check das APIs (ADR-0003): Prometheus + blackbox exporter, projeto compose próprio.
+# Pré-requisito: cadastro e legado de pé (criam as redes cadastro_default e legado_default).
+# Uso: docker compose -f prometheus/docker-compose.metrics.yml up -d   (da raiz do projeto grafana)
+# Sem porta publicada no host: a consulta é feita por dentro da rede `metrics` (o Grafana entra nela na T17).
+name: grafana-metrics
+
+services:
+  blackbox:
+    # Tag + digest (Art. IV.7). Licença Apache-2.0. Ao atualizar, troque os dois e rode scripts/smoke-metrics.sh.
+    image: prom/blackbox-exporter:v0.29.1@sha256:ea1c7aa3ef3f307cd03e85f34abb604478ccb90b567fc690da0cd9776da76b13
+    command:
+      - --config.file=/config/blackbox.yml
+      - --web.listen-address=:9115
+    # A imagem roda como root por padrão: força o usuário "nobody".
+    user: "65534:65534"
+    volumes:
+      - ./blackbox.yml:/config/blackbox.yml:ro
+    networks:
+      # Única peça com rota até as APIs; o Prometheus e o Grafana só alcançam o blackbox, nunca as APIs.
+      - probe
+      - cadastro_default
+      - legado_default
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1:9115/-/healthy"]
+      interval: 15s
+      timeout: 3s
+      retries: 5
+      start_period: 5s
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    mem_limit: 64m
+    restart: unless-stopped
+
+  prometheus:
+    # Tag + digest (Art. IV.7). Licença Apache-2.0.
+    image: prom/prometheus:v3.16.0@sha256:e04987641b57704f408e31f6373ba4138ecf27cb4a165d24aabb6c38fddd0f06
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --storage.tsdb.retention.time=30d
+      - --web.listen-address=:9090
+      # Hardening: --web.enable-lifecycle e --web.enable-admin-api ficam desligados (padrão). Para aplicar mudança de
+      # prometheus.yml/rules.yml use `docker compose ... restart prometheus`; os alvos (targets/) recarregam sozinhos.
+    user: "65534:65534"
+    volumes:
+      - prometheus-data:/prometheus
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./rules.yml:/etc/prometheus/rules.yml:ro
+      - ./targets:/etc/prometheus/targets:ro
+    depends_on:
+      blackbox:
+        condition: service_healthy
+    networks:
+      - metrics
+      - probe
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1:9090/-/ready"]
+      interval: 15s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    mem_limit: 512m
+    restart: unless-stopped
+
+networks:
+  # Prometheus <-> Grafana (T17). `internal`: sem saída para a internet nem para o host.
+  metrics:
+    name: metrics
+    internal: true
+  # Prometheus <-> blackbox. Separada da `metrics` para que o Grafana não alcance o blackbox (e, por ele, as APIs).
+  probe:
+    name: metrics-probe
+    internal: true
+  # Redes criadas pelos projetos cadastro e legado; só o blackbox entra nelas.
+  cadastro_default:
+    name: cadastro_default
+    external: true
+  legado_default:
+    name: legado_default
+    external: true
+
+volumes:
+  prometheus-data:

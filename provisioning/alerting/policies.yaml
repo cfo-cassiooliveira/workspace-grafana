@@ -1,0 +1,26 @@
+# Política de notificação: tudo vai ao contact point "ui-only" e fica SILENCIADO pelo mute timing "always"
+# (cobre todos os dias, 00:00-24:00) numa rota filha: nada é enviado, o estado só aparece na UI. Ver contact-points.yaml.
+# Agrupa por projeto para o estado aparecer organizado por sistema (label "project" de cada regra).
+apiVersion: 1
+
+muteTimes:
+  - orgId: 1
+    name: always
+    time_intervals:
+      - times:
+          - start_time: "00:00"
+            end_time: "24:00"
+
+policies:
+  - orgId: 1
+    receiver: ui-only
+    group_by: [grafana_folder, project]
+    group_wait: 30s
+    group_interval: 5m
+    repeat_interval: 4h
+    # A rota raiz não aceita mute timing: a rota filha pega todo alerta (todo alerta tem alertname) e o silencia.
+    routes:
+      - receiver: ui-only
+        object_matchers:
+          - [alertname, "=~", ".+"]
+        mute_time_intervals: [always]

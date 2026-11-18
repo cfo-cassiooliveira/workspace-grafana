@@ -1,0 +1,909 @@
+{
+  "uid": "legado-overview",
+  "title": "Legado - Visão geral",
+  "description": "Saúde da API do Legado: volume por nível, erros, logins falhos (contagem) e chamadas da API interna de migração por status. Só agregações; sem dados pessoais. Campos marcados em docs precisam ser confirmados contra logs reais.",
+  "tags": [
+    "legado",
+    "visao-geral"
+  ],
+  "schemaVersion": 42,
+  "editable": false,
+  "graphTooltip": 1,
+  "timezone": "browser",
+  "refresh": "1m",
+  "time": {
+    "from": "now-6h",
+    "to": "now"
+  },
+  "timepicker": {
+    "refresh_intervals": [
+      "1m",
+      "5m",
+      "15m"
+    ]
+  },
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": {
+          "type": "grafana",
+          "uid": "-- Grafana --"
+        },
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      }
+    ]
+  },
+  "templating": {
+    "list": []
+  },
+  "links": [
+    {
+      "title": "Abrir no Graylog",
+      "type": "link",
+      "icon": "external link",
+      "url": "http://localhost:9000/search?rangetype=relative&relative=21600&q=service_name%3Alegado-api",
+      "targetBlank": true,
+      "tooltip": "Busca service_name:legado-api no Graylog local, últimas 6 h"
+    }
+  ],
+  "panels": [
+    {
+      "id": 1,
+      "type": "stat",
+      "title": "Registros",
+      "description": "Total de logs da API do Legado no intervalo (service_name legado-api).",
+      "datasource": {
+        "type": "grafana-opensearch-datasource",
+        "uid": "graylog-opensearch"
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 0,
+        "y": 0
+      },
+      "links": [
+        {
+          "title": "Ver no Graylog",
+          "url": "http://localhost:9000/search?rangetype=relative&relative=21600&q=service_name%3Alegado-api",
+          "targetBlank": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "noValue": "Sem dados no período selecionado",
+          "unit": "short",
+          "decimals": 0,
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "blue",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "sum"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "value",
+        "justifyMode": "center",
+        "orientation": "auto"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-opensearch-datasource",
+            "uid": "graylog-opensearch"
+          },
+          "query": "service_name:legado-api",
+          "alias": "",
+          "metrics": [
+            {
+              "id": "1",
+              "type": "count"
+            }
+          ],
+          "bucketAggs": [
+            {
+              "id": "3",
+              "type": "date_histogram",
+              "field": "timestamp",
+              "settings": {
+                "interval": "auto",
+                "min_doc_count": "0",
+                "trimEdges": "0"
+              }
+            }
+          ],
+          "timeField": "timestamp"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "type": "stat",
+      "title": "Erros",
+      "description": "Registros de nível error ou pior (level <= 3). Verde = nenhum erro.",
+      "datasource": {
+        "type": "grafana-opensearch-datasource",
+        "uid": "graylog-opensearch"
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 6,
+        "y": 0
+      },
+      "links": [
+        {
+          "title": "Ver erros no Graylog",
+          "url": "http://localhost:9000/search?rangetype=relative&relative=21600&q=service_name%3Alegado-api%20AND%20level%3A%3C%3D3",
+          "targetBlank": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "noValue": "Sem dados no período selecionado",
+          "unit": "short",
+          "decimals": 0,
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 1
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "sum"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "value",
+        "justifyMode": "center",
+        "orientation": "auto"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-opensearch-datasource",
+            "uid": "graylog-opensearch"
+          },
+          "query": "service_name:legado-api AND level:<=3",
+          "alias": "",
+          "metrics": [
+            {
+              "id": "1",
+              "type": "count"
+            }
+          ],
+          "bucketAggs": [
+            {
+              "id": "3",
+              "type": "date_histogram",
+              "field": "timestamp",
+              "settings": {
+                "interval": "auto",
+                "min_doc_count": "0",
+                "trimEdges": "0"
+              }
+            }
+          ],
+          "timeField": "timestamp"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "type": "stat",
+      "title": "Logins falhos",
+      "description": "Contagem de 'Sign-in failed' (credenciais inválidas) registrados pela API. Eventos enviados pelo navegador (client-logs, campo ClientEvent) são excluídos para não inflar o número. Só contagem: o usuário nunca é exibido.",
+      "datasource": {
+        "type": "grafana-opensearch-datasource",
+        "uid": "graylog-opensearch"
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 12,
+        "y": 0
+      },
+      "links": [
+        {
+          "title": "Ver logins falhos no Graylog",
+          "url": "http://localhost:9000/search?rangetype=relative&relative=21600&q=service_name%3Alegado-api%20AND%20message%3A%22Sign-in%20failed%22%20AND%20NOT%20_exists_%3AClientEvent",
+          "targetBlank": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "noValue": "Sem dados no período selecionado",
+          "unit": "short",
+          "decimals": 0,
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 10
+              },
+              {
+                "color": "red",
+                "value": 20
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "sum"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "value",
+        "justifyMode": "center",
+        "orientation": "auto"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-opensearch-datasource",
+            "uid": "graylog-opensearch"
+          },
+          "query": "service_name:legado-api AND message:\"Sign-in failed\" AND NOT _exists_:ClientEvent",
+          "alias": "",
+          "metrics": [
+            {
+              "id": "1",
+              "type": "count"
+            }
+          ],
+          "bucketAggs": [
+            {
+              "id": "3",
+              "type": "date_histogram",
+              "field": "timestamp",
+              "settings": {
+                "interval": "auto",
+                "min_doc_count": "0",
+                "trimEdges": "0"
+              }
+            }
+          ],
+          "timeField": "timestamp"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "type": "stat",
+      "title": "Recusas de API",
+      "description": "Chamadas à API interna de migração com assinatura HMAC recusada. Qualquer valor acima de zero merece atenção. Eventos do navegador (client-logs) são excluídos.",
+      "datasource": {
+        "type": "grafana-opensearch-datasource",
+        "uid": "graylog-opensearch"
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 18,
+        "y": 0
+      },
+      "links": [
+        {
+          "title": "Ver recusas no Graylog",
+          "url": "http://localhost:9000/search?rangetype=relative&relative=21600&q=service_name%3Alegado-api%20AND%20message%3A%22Internal%20API%20signature%20rejected%22%20AND%20NOT%20_exists_%3AClientEvent",
+          "targetBlank": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "noValue": "Sem dados no período selecionado",
+          "unit": "short",
+          "decimals": 0,
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 1
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "sum"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "value",
+        "justifyMode": "center",
+        "orientation": "auto"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-opensearch-datasource",
+            "uid": "graylog-opensearch"
+          },
+          "query": "service_name:legado-api AND message:\"Internal API signature rejected\" AND NOT _exists_:ClientEvent",
+          "alias": "",
+          "metrics": [
+            {
+              "id": "1",
+              "type": "count"
+            }
+          ],
+          "bucketAggs": [
+            {
+              "id": "3",
+              "type": "date_histogram",
+              "field": "timestamp",
+              "settings": {
+                "interval": "auto",
+                "min_doc_count": "0",
+                "trimEdges": "0"
+              }
+            }
+          ],
+          "timeField": "timestamp"
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "type": "timeseries",
+      "title": "Volume por nível",
+      "description": "Registros por intervalo, empilhados por nível (level_name).",
+      "datasource": {
+        "type": "grafana-opensearch-datasource",
+        "uid": "graylog-opensearch"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 4
+      },
+      "fieldConfig": {
+        "defaults": {
+          "noValue": "Sem dados no período selecionado",
+          "unit": "short",
+          "decimals": 0,
+          "custom": {
+            "drawStyle": "bars",
+            "fillOpacity": 70,
+            "stacking": {
+              "mode": "normal",
+              "group": "A"
+            },
+            "lineWidth": 1,
+            "showPoints": "never",
+            "axisLabel": "Registros por intervalo"
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "error"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "red"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "critical"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "dark-red"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "warning"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "orange"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "information"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "blue"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "notice"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "purple"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "debug"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "gray"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true,
+          "calcs": [
+            "sum"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "links": [
+        {
+          "title": "Ver no Graylog",
+          "url": "http://localhost:9000/search?rangetype=relative&relative=21600&q=service_name%3Alegado-api",
+          "targetBlank": true
+        }
+      ],
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-opensearch-datasource",
+            "uid": "graylog-opensearch"
+          },
+          "query": "service_name:legado-api",
+          "alias": "",
+          "metrics": [
+            {
+              "id": "1",
+              "type": "count"
+            }
+          ],
+          "bucketAggs": [
+            {
+              "id": "2",
+              "type": "terms",
+              "field": "level_name",
+              "settings": {
+                "min_doc_count": "1",
+                "order": "desc",
+                "orderBy": "_count",
+                "size": "10"
+              }
+            },
+            {
+              "id": "3",
+              "type": "date_histogram",
+              "field": "timestamp",
+              "settings": {
+                "interval": "auto",
+                "min_doc_count": "0",
+                "trimEdges": "0"
+              }
+            }
+          ],
+          "timeField": "timestamp"
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "type": "timeseries",
+      "title": "Taxa de erros (por intervalo)",
+      "description": "Erros (level <= 3) por intervalo de tempo. Compare com o volume ao lado.",
+      "datasource": {
+        "type": "grafana-opensearch-datasource",
+        "uid": "graylog-opensearch"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 4
+      },
+      "fieldConfig": {
+        "defaults": {
+          "noValue": "Sem dados no período selecionado",
+          "unit": "short",
+          "decimals": 0,
+          "custom": {
+            "drawStyle": "bars",
+            "fillOpacity": 70,
+            "stacking": {
+              "mode": "normal",
+              "group": "A"
+            },
+            "lineWidth": 1,
+            "showPoints": "never",
+            "axisLabel": "Registros por intervalo"
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Count"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "red"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true,
+          "calcs": [
+            "sum"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "links": [
+        {
+          "title": "Ver erros no Graylog",
+          "url": "http://localhost:9000/search?rangetype=relative&relative=21600&q=service_name%3Alegado-api%20AND%20level%3A%3C%3D3",
+          "targetBlank": true
+        }
+      ],
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-opensearch-datasource",
+            "uid": "graylog-opensearch"
+          },
+          "query": "service_name:legado-api AND level:<=3",
+          "alias": "",
+          "metrics": [
+            {
+              "id": "1",
+              "type": "count"
+            }
+          ],
+          "bucketAggs": [
+            {
+              "id": "3",
+              "type": "date_histogram",
+              "field": "timestamp",
+              "settings": {
+                "interval": "auto",
+                "min_doc_count": "0",
+                "trimEdges": "0"
+              }
+            }
+          ],
+          "timeField": "timestamp"
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "type": "timeseries",
+      "title": "Logins falhos ao longo do tempo",
+      "description": "Contagem de 'Sign-in failed' registrados pela API por intervalo (eventos do navegador excluídos). Picos sugerem força bruta.",
+      "datasource": {
+        "type": "grafana-opensearch-datasource",
+        "uid": "graylog-opensearch"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 12
+      },
+      "fieldConfig": {
+        "defaults": {
+          "noValue": "Sem dados no período selecionado",
+          "unit": "short",
+          "decimals": 0,
+          "custom": {
+            "drawStyle": "bars",
+            "fillOpacity": 70,
+            "stacking": {
+              "mode": "normal",
+              "group": "A"
+            },
+            "lineWidth": 1,
+            "showPoints": "never",
+            "axisLabel": "Registros por intervalo"
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Count"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "orange"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true,
+          "calcs": [
+            "sum"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "links": [
+        {
+          "title": "Ver logins falhos no Graylog",
+          "url": "http://localhost:9000/search?rangetype=relative&relative=21600&q=service_name%3Alegado-api%20AND%20message%3A%22Sign-in%20failed%22%20AND%20NOT%20_exists_%3AClientEvent",
+          "targetBlank": true
+        }
+      ],
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-opensearch-datasource",
+            "uid": "graylog-opensearch"
+          },
+          "query": "service_name:legado-api AND message:\"Sign-in failed\" AND NOT _exists_:ClientEvent",
+          "alias": "",
+          "metrics": [
+            {
+              "id": "1",
+              "type": "count"
+            }
+          ],
+          "bucketAggs": [
+            {
+              "id": "3",
+              "type": "date_histogram",
+              "field": "timestamp",
+              "settings": {
+                "interval": "auto",
+                "min_doc_count": "0",
+                "trimEdges": "0"
+              }
+            }
+          ],
+          "timeField": "timestamp"
+        }
+      ]
+    },
+    {
+      "id": 8,
+      "type": "timeseries",
+      "title": "API interna de migração por status",
+      "description": "Requisições a /api/v1/internal/* por código HTTP (StatusCode). 2xx esperado; 401/403 indicam assinatura recusada.",
+      "datasource": {
+        "type": "grafana-opensearch-datasource",
+        "uid": "graylog-opensearch"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 12
+      },
+      "fieldConfig": {
+        "defaults": {
+          "noValue": "Sem dados no período selecionado",
+          "unit": "short",
+          "decimals": 0,
+          "custom": {
+            "drawStyle": "bars",
+            "fillOpacity": 70,
+            "stacking": {
+              "mode": "normal",
+              "group": "A"
+            },
+            "lineWidth": 1,
+            "showPoints": "never",
+            "axisLabel": "Registros por intervalo"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true,
+          "calcs": [
+            "sum"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "links": [
+        {
+          "title": "Ver chamadas no Graylog",
+          "url": "http://localhost:9000/search?rangetype=relative&relative=21600&q=service_name%3Alegado-api%20AND%20RequestPath%3A%5C%2Fapi%5C%2Fv1%5C%2Finternal*",
+          "targetBlank": true
+        }
+      ],
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-opensearch-datasource",
+            "uid": "graylog-opensearch"
+          },
+          "query": "service_name:legado-api AND RequestPath:\\/api\\/v1\\/internal*",
+          "alias": "",
+          "metrics": [
+            {
+              "id": "1",
+              "type": "count"
+            }
+          ],
+          "bucketAggs": [
+            {
+              "id": "2",
+              "type": "terms",
+              "field": "StatusCode",
+              "settings": {
+                "min_doc_count": "1",
+                "order": "desc",
+                "orderBy": "_count",
+                "size": "10"
+              }
+            },
+            {
+              "id": "3",
+              "type": "date_histogram",
+              "field": "timestamp",
+              "settings": {
+                "interval": "auto",
+                "min_doc_count": "0",
+                "trimEdges": "0"
+              }
+            }
+          ],
+          "timeField": "timestamp"
+        }
+      ]
+    }
+  ]
+}

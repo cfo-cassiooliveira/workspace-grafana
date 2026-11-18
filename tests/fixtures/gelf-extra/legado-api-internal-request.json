@@ -1,0 +1,1 @@
+{"version":"1.1","host":"smoke-grafana","level":6,"short_message":"Synthetic Grafana fixture: internal API request","_smoke_test":"true","_service_name":"legado-api","_correlation_id":"__RUN_ID__","_RequestPath":"/api/v1/internal/credential-verifications","_StatusCode":401}
