@@ -1,0 +1,91 @@
+# CI do Grafana do Workspace (Art. V; ordem do testing-quality.md; varreduras do security.md).
+# Projeto de infraestrutura, fora do Quality Gate do SonarQube (ADR-0001 item 9): sem job do Sonar.
+# Os smokes e o E2E (sobem Graylog, Keycloak e Grafana, pesados e acoplados aos outros projetos) rodam só localmente:
+# ver README, seção "CI".
+name: ci
+
+on:
+  push:
+    branches: [master, 'DEV-*']
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  # Mesmas imagens (tag + digest) dos demais projetos; o shellcheck é o do lint-repo.sh deste projeto.
+  SHELLCHECK_IMAGE: koalaman/shellcheck:v0.11.0@sha256:61862eba1fcf09a484ebcc6feea46f1782532571a34ed51fedf90dd25f925a8d
+  GITLEAKS_IMAGE: zricethezav/gitleaks:v8.28.0@sha256:cdbb7c955abce02001a9f6c9f602fb195b7fadc1e812065883f695d1eeaba854
+  TRIVY_IMAGE: aquasec/trivy:0.76.1@sha256:790fd66d1697395d8693d1acaa1ea702406a20f109b6fc7bac8db623eca6c06c
+
+jobs:
+  secrets:
+    name: gitleaks (segredos em todo o histórico)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          fetch-depth: 0
+      # Falsos positivos ficam no .gitleaksignore (fingerprint + motivo).
+      - run: docker run --rm -v "$PWD:/repo" "$GITLEAKS_IMAGE" git /repo --no-banner --redact --exit-code 1
+
+  trivy:
+    name: Trivy fs (CVEs e misconfig do Dockerfile)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      # Exceções só em .trivyignore.yaml, com justificativa e expired_at.
+      - run: >-
+          docker run --rm -v "$PWD:/src" "$TRIVY_IMAGE" fs --scanners vuln,misconfig
+          --severity HIGH,CRITICAL --ignore-unfixed --skip-version-check --ignorefile /src/.trivyignore.yaml
+          --exit-code 1 /src
+
+  shellcheck:
+    name: ShellCheck
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - run: >-
+          docker run --rm -v "$PWD:/mnt" -w /mnt "$SHELLCHECK_IMAGE" -S warning -x -P SCRIPTDIR
+          scripts/*.sh scripts/lib/*.sh tests/dashboards/*.test.sh
+
+  lint:
+    name: lint do repositório, dashboards e guard.js
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      # shellcheck, LF, segredos, .env ignorado, generate-env, prefixos do proxy e testes do guard.js.
+      - run: ./scripts/lint-repo.sh
+      - run: ./scripts/lint-dashboards.sh
+      - run: ./scripts/lint-dashboards.sh --self-test
+      - name: Testes dos dashboards
+        run: |
+          for test_file in tests/dashboards/*.test.sh; do
+            echo "== $test_file"
+            "$test_file"
+          done
+      # node:test do opensearch-proxy/guard.js na imagem Node (Playwright) pinada.
+      - run: ./scripts/test-guard.sh
+
+  compose:
+    name: validação dos composes
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      # .env fictício gerado no job (sem segredos reais). O segredo do client do Keycloak vem do projeto keycloak,
+      # ausente no runner: usa-se um valor aleatório descartável.
+      - run: ./scripts/generate-env.sh
+      - run: echo "KC_GRAFANA_CLIENT_SECRET=$(openssl rand -hex 16)" >> .env
+      # config não cria redes nem sobe containers: as redes externas não precisam existir.
+      - run: docker compose config -q
+      - run: docker compose -f docker-compose.yml -f docker-compose.graylog.yml config -q
+      - run: docker compose -f prometheus/docker-compose.metrics.yml config -q
