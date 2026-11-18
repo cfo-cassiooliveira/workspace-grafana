@@ -1,5 +1,7 @@
 # Grafana — dashboards e alertas do Workspace
 
+**Sumário**: [Pré-requisitos](#pré-requisitos) · [Ordem de subida](#ordem-de-subida) · [Arquitetura de redes](#arquitetura-de-redes) · [Como subir](#como-subir) · [Dashboards como código](#dashboards-como-código) · [Variáveis do `.env`](#variáveis-do-env) · [Login único](#login-único-keycloak) · [Perfis](#perfis) · [Datasource de logs](#datasource-de-logs-graylogopensearch--t07) · [Backup](#backup-e-restauração--t09) · [Métricas](#métricas-e-health-check-das-apis-prometheus--blackbox) · [Alertas](#alertas-como-código-t14) · [Testes](#testes) · [CI](#ci) · [Riscos](#riscos-conhecidos-e-limitações) · [Pendências](#pendências)
+
 Grafana OSS 13.3.1 em Docker, com login único pelo Keycloak e dashboards/alertas **como código**, lendo os logs que os
 projetos já enviam ao [Graylog](../graylog). Decisões: [ADR-0001](docs/adr/0001-stack-grafana-oss.md) e
 [ADR-0002](docs/adr/0002-sso-keycloak-grafana.md). Especificação: [docs/specs/001-implantacao-grafana](docs/specs/001-implantacao-grafana/spec.md).
