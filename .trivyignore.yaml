@@ -1,0 +1,8 @@
+# Exceções da varredura de vulnerabilidades e misconfig (Trivy fs; security.md). Vazio: nenhuma exceção hoje.
+# Toda entrada nova exige `statement` (justificativa) e `expired_at` (prazo): ao expirar, o CI volta a falhar.
+# Formato:
+#   vulnerabilities:
+#     - id: CVE-AAAA-NNNN
+#       paths: ["caminho/do/artefato"]
+#       statement: motivo e plano
+#       expired_at: AAAA-MM-DD

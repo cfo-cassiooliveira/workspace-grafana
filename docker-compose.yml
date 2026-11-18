@@ -113,6 +113,8 @@ services:
     # Sem o entrypoint do nginx (que escreve em /etc/nginx): a configuração é montada pronta e só leitura.
     entrypoint: ["nginx", "-g", "daemon off;"]
     user: "101:101"
+    # Teto de memória: um serviço não derruba os demais na VM do WSL2 (20 GB, ver ~/.wslconfig).
+    mem_limit: 128m
     read_only: true
     tmpfs:
       - /tmp:size=64m,mode=1777,uid=101,gid=101

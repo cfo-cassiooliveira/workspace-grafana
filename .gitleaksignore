@@ -1,0 +1,2 @@
+# Falsos positivos do gitleaks (security.md). Vazio: o histórico não tem achados.
+# Cada entrada tem comentário com o motivo; fingerprint = commit:arquivo:regra:linha.

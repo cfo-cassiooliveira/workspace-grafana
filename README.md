@@ -307,6 +307,23 @@ de hoje, sem dado pessoal); a API de administração e o reload do Prometheus es
 ./scripts/backup.sh && ./scripts/restore.sh --yes .backups/<arquivo>   # backup/restore (testados por smoke-backup.sh)
 ```
 
+## CI
+
+`.github/workflows/ci.yml` (push em `master`/`DEV-*` e PRs; `permissions: contents: read`; actions por SHA; imagens por tag + digest):
+
+| Job | O que roda |
+|---|---|
+| `secrets` | gitleaks em todo o histórico (`fetch-depth: 0`, `--redact`); falsos positivos em `.gitleaksignore` |
+| `trivy` | `trivy fs --scanners vuln,misconfig`, HIGH/CRITICAL, `--ignore-unfixed` (Dockerfile e dependências); exceções em `.trivyignore.yaml` (justificativa + `expired_at`) |
+| `shellcheck` | `scripts/*.sh`, `scripts/lib/*.sh` e `tests/dashboards/*.test.sh` (imagem do `lint-repo.sh`) |
+| `lint` | `lint-repo.sh`, `lint-dashboards.sh` (+ `--self-test`), `tests/dashboards/*.test.sh` e `test-guard.sh` (unitário do `guard.js`) |
+| `compose` | `docker compose config -q` (base, override GELF e `prometheus/docker-compose.metrics.yml`) com `.env` fictício gerado no job |
+
+- Sem job do SonarQube: o projeto está fora do Quality Gate (ADR-0001, item 9).
+- Os smokes (`smoke-*.sh`) e o `e2e.sh` **não** rodam no CI: sobem Graylog/Keycloak e dependem dos outros projetos. Rode-os
+  localmente antes do PR (ver "Testes").
+- Os `.sh` precisam do bit executável no git (`git update-index --chmod=+x`), pois o runner é Linux.
+
 ## Dashboards por projeto
 
 | Pasta | Dashboard (uid) | Fonte |
@@ -336,8 +353,6 @@ de hoje, sem dado pessoal); a API de administração e o reload do Prometheus es
 
 - Agendar `./scripts/backup.sh` (diário) no SO; ainda é manual.
 - Validar a permissão `0600` dos backups e do `.env` em Linux/WSL (no NTFS/Git Bash não se aplica).
-- CI com gitleaks + Trivy `fs` conforme `security.md`, a criar quando o projeto for versionado.
-- `git init` e a branch `DEV-001` só a pedido do responsável técnico (sem repositório hoje).
 - T21 (métricas de Keycloak/SonarQube) só com novo OK.
 
 O `lint-dashboards.sh` usa `jq` local ou, sem ele, a imagem `ghcr.io/jqlang/jq` pinada por digest via Docker.

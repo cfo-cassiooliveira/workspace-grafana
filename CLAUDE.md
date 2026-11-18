@@ -73,8 +73,9 @@ docs/adr/  docs/specs/      decisões e especificação
 - No Git Bash (Windows), comandos com caminhos `/x:` ou volumes usam `MSYS_NO_PATHCONV=1` e `pwd -W`.
 - **Idioma (Art. I)**: nomes, uids, queries e logs em inglês; comentários, docs e saída dos scripts em PT-BR.
 - Ordem de subida: redes -> graylog -> keycloak -> grafana -> métricas (README). Keycloak e Graylog nunca juntos nos smokes: passagem 1 (Keycloak + Grafana: `smoke-test.sh --skip-datasource --skip-alerts --skip-metrics`, `e2e.sh`) e passagem 2 (Graylog + Grafana: `--skip-sso`, `smoke-proxy.sh`, `smoke-graylog.sh`).
-- Riscos/limitações e pendências ficam no README ("Riscos conhecidos e limitações", "Pendências"); atualize junto ao mudar um ADR. Pendências: agendar backup, validar 0600 em Linux/WSL, CI gitleaks+Trivy (ao versionar), `git init` só a pedido.
-- Git: branch `DEV-001` só quando o repositório for criado (commit/push só a pedido; sem coautoria de IA).
+- Riscos/limitações e pendências ficam no README ("Riscos conhecidos e limitações", "Pendências"); atualize junto ao mudar um ADR. Pendências: agendar backup, validar 0600 em Linux/WSL.
+- Git: branch `DEV-001` (commit/push só a pedido; sem coautoria de IA). Os `.sh` são versionados com bit executável (`100755`).
+- **CI** (`.github/workflows/ci.yml`): gitleaks (histórico), Trivy `fs` (vuln+misconfig, HIGH/CRITICAL, `--ignore-unfixed`), ShellCheck, lint (`lint-repo`, `lint-dashboards` + `--self-test`, `tests/dashboards`, `test-guard`) e `docker compose config -q`. Sem Sonar (ADR-0001 item 9) e sem smokes/E2E (locais). Exceções: `.trivyignore.yaml` (justificativa + `expired_at`) e `.gitleaksignore` (comentado). Imagens por tag+digest; actions por SHA.
 
 ## Comandos
 
