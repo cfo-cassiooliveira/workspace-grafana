@@ -10,21 +10,25 @@ fail=0
 ok() { echo "OK   $*"; }
 bad() { echo "FALHA $*"; fail=1; }
 # check "descrição" comando...: OK se o comando retornar 0, FALHA caso contrário.
+# Sempre retorna 0 (por causa do `set -e`); o resultado fica em CHECK_OK (1 = passou) para quem quiser diagnosticar.
+CHECK_OK=1
 check() {
   local desc="$1"; shift
-  if "$@"; then ok "$desc"; else bad "$desc"; fi
+  if "$@"; then ok "$desc"; CHECK_OK=1; else bad "$desc"; CHECK_OK=0; fi
 }
 get_var() { sed -n "s/^$1=//p" "$2"; }
 
 mapfile -t scripts < <(find scripts tests -name '*.sh' -type f | sort)
 
-# 1. Sintaxe e shellcheck (local, depois Docker; sem nenhum dos dois, só `bash -n` e avisa).
+# 1. Sintaxe e shellcheck. A imagem Docker PINADA vem primeiro: o shellcheck local varia de versão entre máquinas
+# (o do runner do GitHub acusava SC2317 que a v0.11.0 não acusa) e o resultado precisa ser o mesmo em todo lugar.
+# Sem Docker, usa o local; sem nenhum dos dois, só `bash -n` e avisa.
 for f in "${scripts[@]}"; do check "bash -n $f" bash -n "$f"; done
-if command -v shellcheck >/dev/null 2>&1; then
-  check "shellcheck" shellcheck -x -P SCRIPTDIR "${scripts[@]}"
-elif command -v docker >/dev/null 2>&1 && docker info >/dev/null 2>&1; then
+if command -v docker >/dev/null 2>&1 && docker info >/dev/null 2>&1; then
   check "shellcheck (docker)" env MSYS_NO_PATHCONV=1 docker run --rm -v "$(pwd -W 2>/dev/null || pwd):/mnt" \
     -w /mnt koalaman/shellcheck:v0.11.0@sha256:61862eba1fcf09a484ebcc6feea46f1782532571a34ed51fedf90dd25f925a8d -x -P SCRIPTDIR "${scripts[@]}"
+elif command -v shellcheck >/dev/null 2>&1; then
+  check "shellcheck (local, versão pode diferir da pinada)" shellcheck -x -P SCRIPTDIR "${scripts[@]}"
 else
   echo "AVISO shellcheck indisponível (nem local nem Docker); só a checagem de sintaxe foi feita."
 fi
@@ -94,6 +98,7 @@ if command -v docker >/dev/null 2>&1 && docker compose version >/dev/null 2>&1; 
     out="$(env -u GRAFANA_ADMIN_USER -u GRAFANA_ADMIN_PASSWORD -u GF_SECURITY_SECRET_KEY \
       docker compose --env-file "$empty_env" config 2>&1 || true)"
     check "compose sem .env falha pedindo $var" grep -qF "defina $var no .env" <<<"$out"
+    [[ "$CHECK_OK" == 1 ]] || printf '   saída do compose (só nomes de variáveis, sem valores):\n%s\n' "$(head -c 600 <<<"$out" | sed 's/^/     /')"
   done
 fi
 
@@ -117,6 +122,10 @@ check "Grafana fora da rede logs-read no compose" no_logs_read "$grafana_block"
 # 7. Testes unitários do guard.js (node:test; Node local ou, sem ele, a imagem do Playwright via Docker).
 if command -v node >/dev/null 2>&1; then
   check "testes unitários do guard.js (node local)" bash -c "NODE_LOCAL=1 ./scripts/test-guard.sh >/dev/null"
+  if [[ "$CHECK_OK" != 1 ]]; then
+    printf '   node local: %s\n   saída do teste (final):\n' "$(node --version)"
+    NODE_LOCAL=1 ./scripts/test-guard.sh 2>&1 | tail -n 25 | sed 's/^/     /' || true
+  fi
 elif command -v docker >/dev/null 2>&1 && docker info >/dev/null 2>&1; then
   check "testes unitários do guard.js (docker)" bash -c "./scripts/test-guard.sh >/dev/null"
 else
