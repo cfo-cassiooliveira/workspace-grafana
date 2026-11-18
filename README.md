@@ -323,6 +323,13 @@ de hoje, sem dado pessoal); a API de administração e o reload do Prometheus es
 - Os smokes (`smoke-*.sh`) e o `e2e.sh` **não** rodam no CI: sobem Graylog/Keycloak e dependem dos outros projetos. Rode-os
   localmente antes do PR (ver "Testes").
 - Os `.sh` precisam do bit executável no git (`git update-index --chmod=+x`), pois o runner é Linux.
+- **Merge na `master` exige os 5 jobs verdes** (ruleset `protect-master`, ADR-0002 do Workspace). Os nomes exigidos ficam em
+  `.github/required-checks.txt`; ao renomear ou criar um job, atualize o arquivo e reaplique com
+  `bash C:/Workspace/_templates/github-repo-setup.sh apply cfo-cassiooliveira/workspace-grafana --checks-file .github/required-checks.txt`.
+  Um nome errado trava todo PR; `check` mostra o que está ligado.
+- O `lint-repo.sh` e o teste do `guard.js` não podem depender da versão do Node, do `shellcheck` nem do `docker compose` da
+  máquina: o primeiro CI achou três diferenças entre o Windows e o runner (ShellCheck local de outra versão, `node --test`
+  com pasta no Node 22 e `docker compose` que reporta só o primeiro erro).
 
 ## Dashboards por projeto
 
