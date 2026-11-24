@@ -32,6 +32,8 @@ docker compose up -d --build                   # [T02] sobe o Grafana (exige as 
 docker compose -f prometheus/docker-compose.metrics.yml up -d   # [T20] métricas (exige cadastro e legado de pé); suba ANTES do Grafana (rede metrics)
 ./scripts/smoke-proxy.sh                    # [T23] proxy somente leitura (Grafana + Graylog de pé)
 ./scripts/smoke-metrics.sh                     # [T20/T22] smoke das métricas
+docker compose -f prometheus/docker-compose.metrics.yml -f prometheus/docker-compose.rabbitmq.yml up -d   # [ADR-0005] com o broker de pé (cria a rede rabbitmq-metrics)
+./scripts/smoke-rabbitmq.sh                    # [ADR-0005] observabilidade do RabbitMQ (broker de pé; não reinicia o broker)
 ./scripts/smoke-graylog.sh                  # [T08] com o Graylog de pé e o override GELF (sem Keycloak)
 ./scripts/smoke-backup.sh                   # [T09] só o Grafana; backup/restore com `down -v` do projeto grafana
 ./scripts/smoke-restart.sh                  # [H1] reinício idempotente (qualquer stack do Grafana de pé)

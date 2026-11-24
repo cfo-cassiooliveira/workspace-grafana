@@ -387,3 +387,445 @@ groups:
               expression: R1
               conditions: [{evaluator: {type: gt, params: [0]}}]
               datasource: {type: __expr__, uid: __expr__}
+
+  # RabbitMQ (ADR-0005): broker e coletor de logs (Fluent Bit), lidos do Prometheus (jobs rabbitmq e rabbitmq-log-shipper).
+  # Limiares de dev single-node justificados no README ("Observabilidade do RabbitMQ"). As regras por fila geram uma instância
+  # por (vhost, queue); sem série = Normal (noDataState OK), exceto as de alvo fora, que tratam a ausência como problema.
+  - orgId: 1
+    name: rabbitmq
+    folder: rabbitmq
+    interval: 1m
+    rules:
+      # Alvo fora (up == 0) ou série ausente (absent) alertam, como na regra api-no-data.
+      - uid: rabbitmq-broker-down
+        title: RabbitMQ - Broker fora do ar
+        condition: C
+        for: 2m
+        noDataState: Alerting
+        execErrState: Error
+        isPaused: false
+        labels:
+          project: rabbitmq
+          severity: critical
+        annotations:
+          summary: "O Prometheus não coleta as métricas do broker (rabbitmq:15692) há mais de 2 minutos: broker parado, rede rabbitmq-metrics ausente ou Prometheus subido sem o override docker-compose.rabbitmq.yml."
+          description: "Com o broker fora, as demais regras do RabbitMQ ficam sem dados (Normal). Verifique o projeto rabbitmq (docker ps) e se o Prometheus está na rede rabbitmq-metrics."
+          __dashboardUid__: rabbitmq-overview
+          __panelId__: "67"
+        data:
+          - refId: A
+            relativeTimeRange: {from: 600, to: 0}
+            datasourceUid: prometheus
+            model:
+              refId: A
+              datasource: {type: prometheus, uid: prometheus}
+              expr: 'sum(absent(up{job="rabbitmq"}) or vector(0)) + sum(count(up{job="rabbitmq"} == 0) or vector(0))'
+              instant: true
+              range: false
+          - refId: R1
+            datasourceUid: __expr__
+            model: {refId: R1, type: reduce, expression: A, reducer: last, settings: {mode: dropNN}, datasource: {type: __expr__, uid: __expr__}}
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              refId: C
+              type: threshold
+              expression: R1
+              conditions: [{evaluator: {type: gt, params: [0]}}]
+              datasource: {type: __expr__, uid: __expr__}
+      - uid: rabbitmq-queue-growing
+        title: RabbitMQ - Fila crescendo
+        condition: C
+        for: 15m
+        noDataState: OK
+        execErrState: Error
+        isPaused: false
+        labels:
+          project: rabbitmq
+          severity: warning
+        annotations:
+          summary: "A fila {{ $labels.queue }} (vhost {{ $labels.vhost }}) tem mais de 100 mensagens prontas e continua crescendo há 15 minutos: o consumidor não acompanha a publicação."
+          description: "Veja o dashboard RabbitMQ - Visão geral. Limiar de dev single-node (ADR-0005): mais de 100 mensagens prontas com tendência positiva (deriv em 15 min) por 15 min."
+          __dashboardUid__: rabbitmq-overview
+          __panelId__: "9"
+        data:
+          - refId: A
+            relativeTimeRange: {from: 600, to: 0}
+            datasourceUid: prometheus
+            model:
+              refId: A
+              datasource: {type: prometheus, uid: prometheus}
+              expr: 'rabbitmq_queue_messages_ready{job="rabbitmq",queue!~".*\\.dlq"} > 100 and deriv(rabbitmq_queue_messages_ready{job="rabbitmq",queue!~".*\\.dlq"}[15m]) > 0'
+              instant: true
+              range: false
+          - refId: R1
+            datasourceUid: __expr__
+            model: {refId: R1, type: reduce, expression: A, reducer: last, settings: {mode: dropNN}, datasource: {type: __expr__, uid: __expr__}}
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              refId: C
+              type: threshold
+              expression: R1
+              conditions: [{evaluator: {type: gt, params: [0]}}]
+              datasource: {type: __expr__, uid: __expr__}
+      - uid: rabbitmq-queue-without-consumer
+        title: RabbitMQ - Fila com mensagens e sem consumidor
+        condition: C
+        for: 10m
+        noDataState: OK
+        execErrState: Error
+        isPaused: false
+        labels:
+          project: rabbitmq
+          severity: warning
+        annotations:
+          summary: "A fila {{ $labels.queue }} (vhost {{ $labels.vhost }}) tem mensagens prontas e nenhum consumidor há 10 minutos."
+          description: "O serviço consumidor caiu ou perdeu a conexão. DLQs (*.dlq) ficam de fora: têm regra própria."
+          __dashboardUid__: rabbitmq-overview
+          __panelId__: "9"
+        data:
+          - refId: A
+            relativeTimeRange: {from: 600, to: 0}
+            datasourceUid: prometheus
+            model:
+              refId: A
+              datasource: {type: prometheus, uid: prometheus}
+              expr: 'rabbitmq_queue_messages_ready{job="rabbitmq",queue!~".*\\.dlq"} > 0 and on(vhost, queue) rabbitmq_queue_consumers{job="rabbitmq"} == 0'
+              instant: true
+              range: false
+          - refId: R1
+            datasourceUid: __expr__
+            model: {refId: R1, type: reduce, expression: A, reducer: last, settings: {mode: dropNN}, datasource: {type: __expr__, uid: __expr__}}
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              refId: C
+              type: threshold
+              expression: R1
+              conditions: [{evaluator: {type: gt, params: [0]}}]
+              datasource: {type: __expr__, uid: __expr__}
+      - uid: rabbitmq-dlq-not-empty
+        title: RabbitMQ - DLQ com mensagens
+        condition: C
+        for: 5m
+        noDataState: OK
+        execErrState: Error
+        isPaused: false
+        labels:
+          project: rabbitmq
+          severity: warning
+        annotations:
+          summary: "A dead-letter queue {{ $labels.queue }} (vhost {{ $labels.vhost }}) tem mensagens há 5 minutos: mensagens rejeitadas ou acima do limite de entregas."
+          description: "Investigue a causa no Graylog antes de reprocessar ou descartar. Convenção de nome: <app>-consumer.<fila>.dlq."
+          __dashboardUid__: rabbitmq-overview
+          __panelId__: "9"
+        data:
+          - refId: A
+            relativeTimeRange: {from: 600, to: 0}
+            datasourceUid: prometheus
+            model:
+              refId: A
+              datasource: {type: prometheus, uid: prometheus}
+              expr: 'sum by (vhost, queue) (rabbitmq_queue_messages_ready{job="rabbitmq",queue=~".*\\.dlq"}) > 0'
+              instant: true
+              range: false
+          - refId: R1
+            datasourceUid: __expr__
+            model: {refId: R1, type: reduce, expression: A, reducer: last, settings: {mode: dropNN}, datasource: {type: __expr__, uid: __expr__}}
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              refId: C
+              type: threshold
+              expression: R1
+              conditions: [{evaluator: {type: gt, params: [0]}}]
+              datasource: {type: __expr__, uid: __expr__}
+      - uid: rabbitmq-memory-high
+        title: RabbitMQ - Memória alta
+        condition: C
+        for: 5m
+        noDataState: OK
+        execErrState: Error
+        isPaused: false
+        labels:
+          project: rabbitmq
+          severity: warning
+        annotations:
+          summary: "O broker usa mais de 80% do limite de memória (watermark de 600 MiB) há 5 minutos; no limite ele bloqueia os publicadores."
+          description: "Aviso antes do alarme de memória. Veja as filas com backlog no dashboard RabbitMQ - Visão geral."
+          __dashboardUid__: rabbitmq-overview
+          __panelId__: "7"
+        data:
+          - refId: A
+            relativeTimeRange: {from: 600, to: 0}
+            datasourceUid: prometheus
+            model:
+              refId: A
+              datasource: {type: prometheus, uid: prometheus}
+              expr: 'rabbitmq_process_resident_memory_bytes{job="rabbitmq"} / rabbitmq_resident_memory_limit_bytes{job="rabbitmq"} > 0.8'
+              instant: true
+              range: false
+          - refId: R1
+            datasourceUid: __expr__
+            model: {refId: R1, type: reduce, expression: A, reducer: last, settings: {mode: dropNN}, datasource: {type: __expr__, uid: __expr__}}
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              refId: C
+              type: threshold
+              expression: R1
+              conditions: [{evaluator: {type: gt, params: [0]}}]
+              datasource: {type: __expr__, uid: __expr__}
+      - uid: rabbitmq-memory-alarm
+        title: RabbitMQ - Alarme de memória ativo
+        condition: C
+        for: 0s
+        noDataState: OK
+        execErrState: Error
+        isPaused: false
+        labels:
+          project: rabbitmq
+          severity: critical
+        annotations:
+          summary: "O alarme de memória do broker está ativo: os publicadores estão BLOQUEADOS."
+          description: "Esvazie as filas (consumidores) ou aumente o limite (rabbitmq.conf e mem_limit do compose do rabbitmq)."
+          __dashboardUid__: rabbitmq-overview
+          __panelId__: "7"
+        data:
+          - refId: A
+            relativeTimeRange: {from: 600, to: 0}
+            datasourceUid: prometheus
+            model:
+              refId: A
+              datasource: {type: prometheus, uid: prometheus}
+              expr: 'rabbitmq_alarms_memory_used_watermark{job="rabbitmq"} == 1'
+              instant: true
+              range: false
+          - refId: R1
+            datasourceUid: __expr__
+            model: {refId: R1, type: reduce, expression: A, reducer: last, settings: {mode: dropNN}, datasource: {type: __expr__, uid: __expr__}}
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              refId: C
+              type: threshold
+              expression: R1
+              conditions: [{evaluator: {type: gt, params: [0]}}]
+              datasource: {type: __expr__, uid: __expr__}
+      - uid: rabbitmq-disk-low
+        title: RabbitMQ - Disco perto do limite
+        condition: C
+        for: 10m
+        noDataState: OK
+        execErrState: Error
+        isPaused: false
+        labels:
+          project: rabbitmq
+          severity: warning
+        annotations:
+          summary: "O espaço livre em disco do broker está abaixo de 2x o limite configurado há 10 minutos."
+          description: "Aviso antes do alarme de disco. Libere espaço no host ou no volume do Docker."
+          __dashboardUid__: rabbitmq-overview
+          __panelId__: "8"
+        data:
+          - refId: A
+            relativeTimeRange: {from: 600, to: 0}
+            datasourceUid: prometheus
+            model:
+              refId: A
+              datasource: {type: prometheus, uid: prometheus}
+              expr: 'rabbitmq_disk_space_available_bytes{job="rabbitmq"} < 2 * rabbitmq_disk_space_available_limit_bytes{job="rabbitmq"}'
+              instant: true
+              range: false
+          - refId: R1
+            datasourceUid: __expr__
+            model: {refId: R1, type: reduce, expression: A, reducer: last, settings: {mode: dropNN}, datasource: {type: __expr__, uid: __expr__}}
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              refId: C
+              type: threshold
+              expression: R1
+              conditions: [{evaluator: {type: gt, params: [0]}}]
+              datasource: {type: __expr__, uid: __expr__}
+      - uid: rabbitmq-disk-alarm
+        title: RabbitMQ - Alarme de disco ativo
+        condition: C
+        for: 0s
+        noDataState: OK
+        execErrState: Error
+        isPaused: false
+        labels:
+          project: rabbitmq
+          severity: critical
+        annotations:
+          summary: "O alarme de disco do broker está ativo: os publicadores estão BLOQUEADOS."
+          description: "Libere espaço em disco imediatamente."
+          __dashboardUid__: rabbitmq-overview
+          __panelId__: "8"
+        data:
+          - refId: A
+            relativeTimeRange: {from: 600, to: 0}
+            datasourceUid: prometheus
+            model:
+              refId: A
+              datasource: {type: prometheus, uid: prometheus}
+              expr: 'rabbitmq_alarms_free_disk_space_watermark{job="rabbitmq"} == 1'
+              instant: true
+              range: false
+          - refId: R1
+            datasourceUid: __expr__
+            model: {refId: R1, type: reduce, expression: A, reducer: last, settings: {mode: dropNN}, datasource: {type: __expr__, uid: __expr__}}
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              refId: C
+              type: threshold
+              expression: R1
+              conditions: [{evaluator: {type: gt, params: [0]}}]
+              datasource: {type: __expr__, uid: __expr__}
+      - uid: rabbitmq-log-shipper-down
+        title: RabbitMQ - Coletor de logs fora do ar
+        condition: C
+        for: 5m
+        noDataState: Alerting
+        execErrState: Error
+        isPaused: false
+        labels:
+          project: rabbitmq
+          severity: warning
+        annotations:
+          summary: "O Prometheus não coleta as métricas do Fluent Bit (log-shipper:2020) há 5 minutos: os logs do broker não chegam ao Graylog."
+          description: "O log fica no volume do broker e o coletor retoma do ponto salvo ao voltar. Verifique o container rabbitmq-log-shipper-1."
+          __dashboardUid__: rabbitmq-log-shipper
+          __panelId__: "1"
+        data:
+          - refId: A
+            relativeTimeRange: {from: 600, to: 0}
+            datasourceUid: prometheus
+            model:
+              refId: A
+              datasource: {type: prometheus, uid: prometheus}
+              expr: 'sum(absent(up{job="rabbitmq-log-shipper"}) or vector(0)) + sum(count(up{job="rabbitmq-log-shipper"} == 0) or vector(0))'
+              instant: true
+              range: false
+          - refId: R1
+            datasourceUid: __expr__
+            model: {refId: R1, type: reduce, expression: A, reducer: last, settings: {mode: dropNN}, datasource: {type: __expr__, uid: __expr__}}
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              refId: C
+              type: threshold
+              expression: R1
+              conditions: [{evaluator: {type: gt, params: [0]}}]
+              datasource: {type: __expr__, uid: __expr__}
+      - uid: rabbitmq-log-shipper-backlog
+        title: RabbitMQ - Backlog do coletor de logs
+        condition: C
+        for: 10m
+        noDataState: OK
+        execErrState: Error
+        isPaused: false
+        labels:
+          project: rabbitmq
+          severity: warning
+        annotations:
+          summary: "O coletor de logs tem chunks parados no buffer em disco há 10 minutos: o Graylog não está recebendo."
+          description: "Em operação normal o backlog volta a 0 em segundos. Com o Graylog fora, cresce até o teto de 200 MB e então descarta."
+          __dashboardUid__: rabbitmq-log-shipper
+          __panelId__: "2"
+        data:
+          - refId: A
+            relativeTimeRange: {from: 600, to: 0}
+            datasourceUid: prometheus
+            model:
+              refId: A
+              datasource: {type: prometheus, uid: prometheus}
+              expr: 'sum(fluentbit_storage_fs_chunks{job="rabbitmq-log-shipper"}) > 0'
+              instant: true
+              range: false
+          - refId: R1
+            datasourceUid: __expr__
+            model: {refId: R1, type: reduce, expression: A, reducer: last, settings: {mode: dropNN}, datasource: {type: __expr__, uid: __expr__}}
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              refId: C
+              type: threshold
+              expression: R1
+              conditions: [{evaluator: {type: gt, params: [0]}}]
+              datasource: {type: __expr__, uid: __expr__}
+      - uid: rabbitmq-log-shipper-output-failure
+        title: RabbitMQ - Falha de envio do coletor de logs
+        condition: C
+        for: 5m
+        noDataState: OK
+        execErrState: Error
+        isPaused: false
+        labels:
+          project: rabbitmq
+          severity: warning
+        annotations:
+          summary: "A saída GELF do coletor registra erros ou retentativas esgotadas na janela de 15 minutos, por 5 minutos seguidos."
+          description: "Confira o Graylog (input GELF TCP 12201) e a rede observability."
+          __dashboardUid__: rabbitmq-log-shipper
+          __panelId__: "3"
+        data:
+          - refId: A
+            relativeTimeRange: {from: 600, to: 0}
+            datasourceUid: prometheus
+            model:
+              refId: A
+              datasource: {type: prometheus, uid: prometheus}
+              expr: 'sum(increase(fluentbit_output_errors_total{job="rabbitmq-log-shipper"}[15m])) + sum(increase(fluentbit_output_retries_failed_total{job="rabbitmq-log-shipper"}[15m])) > 0'
+              instant: true
+              range: false
+          - refId: R1
+            datasourceUid: __expr__
+            model: {refId: R1, type: reduce, expression: A, reducer: last, settings: {mode: dropNN}, datasource: {type: __expr__, uid: __expr__}}
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              refId: C
+              type: threshold
+              expression: R1
+              conditions: [{evaluator: {type: gt, params: [0]}}]
+              datasource: {type: __expr__, uid: __expr__}
+      - uid: rabbitmq-log-shipper-dropping
+        title: RabbitMQ - Coletor descartando logs
+        condition: C
+        for: 0s
+        noDataState: OK
+        execErrState: Error
+        isPaused: false
+        labels:
+          project: rabbitmq
+          severity: critical
+        annotations:
+          summary: "O coletor descartou registros de log nos últimos 15 minutos (teto do buffer em disco atingido): há PERDA de logs do broker."
+          description: "Única forma de perda do coletor. Restabeleça o Graylog; os registros descartados não voltam."
+          __dashboardUid__: rabbitmq-log-shipper
+          __panelId__: "4"
+        data:
+          - refId: A
+            relativeTimeRange: {from: 600, to: 0}
+            datasourceUid: prometheus
+            model:
+              refId: A
+              datasource: {type: prometheus, uid: prometheus}
+              expr: 'sum(increase(fluentbit_output_dropped_records_total{job="rabbitmq-log-shipper"}[15m])) > 0'
+              instant: true
+              range: false
+          - refId: R1
+            datasourceUid: __expr__
+            model: {refId: R1, type: reduce, expression: A, reducer: last, settings: {mode: dropNN}, datasource: {type: __expr__, uid: __expr__}}
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              refId: C
+              type: threshold
+              expression: R1
+              conditions: [{evaluator: {type: gt, params: [0]}}]
+              datasource: {type: __expr__, uid: __expr__}

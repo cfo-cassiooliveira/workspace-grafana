@@ -1,4 +1,4 @@
-# Prometheus do Workspace (ADR-0003): só health check das APIs por blackbox. Keycloak/SonarQube ficam para a T21.
+# Prometheus do Workspace (ADR-0003): health check das APIs por blackbox; métricas do RabbitMQ (ADR-0005). Keycloak/SonarQube ficam para a T21.
 global:
   scrape_interval: 15s
   scrape_timeout: 10s
@@ -32,3 +32,18 @@ scrape_configs:
         target_label: instance
       - target_label: __address__
         replacement: blackbox:9115
+
+  # RabbitMQ (ADR-0005): broker e coletor de logs (Fluent Bit) pela rede externa rabbitmq-metrics, que só entra no Prometheus
+  # com o override prometheus/docker-compose.rabbitmq.yml (broker de pé). Sem o override, ou com o broker fora, os dois alvos
+  # ficam up == 0 e a regra "RabbitMQ - Broker fora do ar" dispara (comportamento esperado).
+  # /metrics já traz as séries por fila (prometheus.return_per_object_metrics = true no broker): não é preciso /metrics/per-object.
+  - job_name: rabbitmq
+    static_configs:
+      - targets: ["rabbitmq:15692"]
+        labels: {project: rabbitmq}
+
+  - job_name: rabbitmq-log-shipper
+    metrics_path: /api/v2/metrics/prometheus
+    static_configs:
+      - targets: ["log-shipper:2020"]
+        labels: {project: rabbitmq}
