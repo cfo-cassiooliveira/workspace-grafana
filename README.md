@@ -1,12 +1,12 @@
 # Grafana — dashboards e alertas do Workspace
 
-**Sumário**: [Pré-requisitos](#pré-requisitos) · [Ordem de subida](#ordem-de-subida) · [Arquitetura de redes](#arquitetura-de-redes) · [Como subir](#como-subir) · [Dashboards como código](#dashboards-como-código) · [Variáveis do `.env`](#variáveis-do-env) · [Login único](#login-único-keycloak) · [Perfis](#perfis) · [Datasource de logs](#datasource-de-logs-graylogopensearch--t07) · [Backup](#backup-e-restauração--t09) · [Métricas](#métricas-e-health-check-das-apis-prometheus--blackbox) · [Alertas](#alertas-como-código-t14) · [Testes](#testes) · [CI](#ci) · [Riscos](#riscos-conhecidos-e-limitações) · [Pendências](#pendências)
+**Sumário**: [Pré-requisitos](#pré-requisitos) · [Ordem de subida](#ordem-de-subida) · [Arquitetura de redes](#arquitetura-de-redes) · [Como subir](#como-subir) · [Dashboards como código](#dashboards-como-código) · [Variáveis do `.env`](#variáveis-do-env) · [Login único](#login-único-keycloak) · [Perfis](#perfis) · [Datasource de logs](#datasource-de-logs-graylogopensearch--t07) · [Backup](#backup-e-restauração--t09) · [Métricas](#métricas-e-health-check-das-apis-prometheus--blackbox) · [RabbitMQ](#observabilidade-do-rabbitmq-adr-0005) · [Alertas](#alertas-como-código-t14) · [Testes](#testes) · [CI](#ci) · [Riscos](#riscos-conhecidos-e-limitações) · [Pendências](#pendências)
 
 Grafana OSS 13.3.1 em Docker, com login único pelo Keycloak e dashboards/alertas **como código**, lendo os logs que os
 projetos já enviam ao [Graylog](../graylog). Decisões: [ADR-0001](docs/adr/0001-stack-grafana-oss.md) e
 [ADR-0002](docs/adr/0002-sso-keycloak-grafana.md). Especificação: [docs/specs/001-implantacao-grafana](docs/specs/001-implantacao-grafana/spec.md).
 
-> Estado: T01-T15, T17, T20, T22 e T23 entregues e T16 (fechamento) concluída; ADRs 0001-0004 **aceitos** pelo responsável técnico em 2026-11-17 (T21, scrape de Keycloak/SonarQube, segue fora da v1).
+> Estado: T01-T15, T17, T20, T22 e T23 entregues e T16 (fechamento) concluída; ADRs 0001-0004 **aceitos** (0005, observabilidade do RabbitMQ, proposto) pelo responsável técnico em 2026-11-17 (T21, scrape de Keycloak/SonarQube, segue fora da v1).
 > **OpenSearch somente leitura (T23, ADR-0004)**: o Grafana lê o OpenSearch só pelo `opensearch-proxy` (nginx + njs, allowlist estrita). Escrita e leitura fora do index pattern ficam negadas ao Viewer; sobram riscos residuais medidos (seção do datasource e ADR-0004).
 
 ## Pré-requisitos
@@ -231,6 +231,25 @@ então o alerta da T17 deve separar "`probe_ip_addr_hash` = 0" (nome/DNS) de "ha
 O `smoke-metrics.sh` prova essa distinção. O smoke usa uma instância descartável do Prometheus (as séries reais não recebem alvos falsos).
 Prometheus e blackbox ainda **não** enviam logs ao Graylog (decisão consciente, ADR-0003; avaliar depois).
 
+## Observabilidade do RabbitMQ (ADR-0005)
+
+Scrape do broker (`rabbitmq:15692/metrics`) e do coletor de logs Fluent Bit (`log-shipper:2020/api/v2/metrics/prometheus`)
+pela rede externa `rabbitmq-metrics` (`internal: true`, criada pelo compose do projeto `rabbitmq`), **só no Prometheus** e sem porta nova no host.
+A rede entra por um **override opcional**, como o `docker-compose.graylog.yml`: rede externa ausente derruba o `up` inteiro, e o stack de métricas deve subir com o broker fora.
+
+```bash
+# Pré-requisito: broker de pé (projeto rabbitmq; ele cria a rede rabbitmq-metrics)
+docker compose -f prometheus/docker-compose.metrics.yml -f prometheus/docker-compose.rabbitmq.yml up -d
+./scripts/smoke-rabbitmq.sh      # alvos UP, dashboards com dados, 12 regras carregadas e mutation check no broker
+./tests/dashboards/rabbitmq.test.sh   # estático: dashboards, jobs, override e regras
+./scripts/import-rabbitmq-dashboards.sh  # reimporta os dashboards oficiais (revisão e SHA-256 fixados)
+```
+
+- **Sem o override** (ou com o broker fora) os alvos ficam `up == 0` e "RabbitMQ - Broker fora do ar" dispara: é o esperado.
+- Dashboards (pasta `rabbitmq`): oficiais 10991 rev 15 e 11350 rev 8 (datasource ajustado) e `rabbitmq-log-shipper` (backlog, retries, erros e descartes da saída GELF). 11352 (Erlang-Distribution) fica de fora: sem séries `erlang_vm_dist_*` em nó único.
+- 12 alertas (broker fora, fila crescendo, fila sem consumidor, DLQ, memória alta/alarme, disco perto/alarme, coletor fora/backlog/falha/descarte); limiares justificados no ADR-0005.
+- O mutation check do smoke usa o usuário `smoke-app` (vhost `dev`; senha lida de `../rabbitmq/.env`, só leitura), publica numa fila `smoke-consumer.grafana-*` sem consumidor, confere a regra real e remove a fila. Nunca reinicia o broker.
+
 ## Alertas como código (T14)
 
 `provisioning/alerting/{rules,contact-points,policies}.yaml` (arquivos nativos do Grafana; regras vêm com `provenance: file`, sem
@@ -300,6 +319,8 @@ de hoje, sem dado pessoal); a API de administração e o reload do Prometheus es
 ./tests/dashboards/api-health.test.sh       # [T17] dashboard Plataforma - Saúde das APIs e regras API fora x DNS
 ./scripts/smoke-graylog.sh                  # override GELF: logs do Grafana no Graylog, sem login/e-mail em claro (Graylog de pé)
 ./scripts/smoke-metrics.sh                  # stack de métricas: config, hardening, alvos e probe_success
+./scripts/smoke-rabbitmq.sh                 # [ADR-0005] RabbitMQ: alvos UP, dashboards com dados, alertas e mutation check (broker de pé + override)
+./tests/dashboards/rabbitmq.test.sh         # [ADR-0005] estático: dashboards oficiais, jobs, override e 12 regras
 ./scripts/smoke-backup.sh                   # backup/restore: cria estado de teste, backup, down -v do grafana, restore e confere
 ./scripts/e2e.sh                           # [T15] E2E SSO e hardening (Playwright em container): Keycloak + Grafana de pé, SEM Graylog; usuários descartáveis e2e.* criados/removidos pela Admin API
 ./scripts/smoke-proxy.sh                    # [T23] proxy somente leitura: hardening e allowlist (Graylog + Grafana de pé)
@@ -341,6 +362,7 @@ de hoje, sem dado pessoal); a API de administração e o reload do Prometheus es
 | `legado` | Legado - Visão geral (`legado-overview`) | logs (OpenSearch) |
 | `keycloak` | Keycloak - Autenticação (`keycloak-authentication`) | logs (OpenSearch) |
 | `sonarqube` | SonarQube - Infra (`sonarqube-infra`) | logs (OpenSearch) |
+| `rabbitmq` | RabbitMQ - Visão geral (`rabbitmq-overview`), Alocadores de memória (`rabbitmq-memory-allocators`), Coletor de logs (`rabbitmq-log-shipper`) | Prometheus |
 | `graylog` | Graylog - Plataforma (`graylog-platform`) e Plataforma - Saúde das APIs (`api-health`) | logs (OpenSearch) e Prometheus |
 
 ## Riscos conhecidos e limitações

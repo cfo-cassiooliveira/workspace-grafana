@@ -1,0 +1,16 @@
+# Integração opcional com o RabbitMQ (projeto C:\Workspace\rabbitmq, ADR-0005). Requer o broker de pé antes: ele cria a
+# rede `rabbitmq-metrics` (nome fixo, `internal: true`), onde ficam só o broker (15692) e o coletor de logs (2020).
+# Uso (da raiz do projeto grafana):
+#   docker compose -f prometheus/docker-compose.metrics.yml -f prometheus/docker-compose.rabbitmq.yml up -d
+# Fica num arquivo separado (como o docker-compose.graylog.yml) para o stack de métricas continuar subindo com o broker fora:
+# rede externa ausente faz o `up` inteiro falhar. Nenhuma porta nova no host: o scrape é por dentro da rede interna.
+# Atenção: subir SEM este arquivo recria o Prometheus fora da rede e os alvos rabbitmq/rabbitmq-log-shipper ficam up == 0.
+services:
+  prometheus:
+    networks:
+      rabbitmq-metrics: {}
+
+networks:
+  rabbitmq-metrics:
+    name: rabbitmq-metrics
+    external: true
