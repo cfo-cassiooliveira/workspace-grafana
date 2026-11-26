@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Teste estático da observabilidade do RabbitMQ (ADR-0005): dashboards oficiais importados (revisão fixada, datasource
-# provisionado, sem variável de datasource), dashboard do coletor de logs, jobs do Prometheus, override de rede e as 12 regras.
+# provisionado, sem variável de datasource), dashboard do coletor de logs, jobs do Prometheus, override de rede e as 13 regras.
 # Uso: ./tests/dashboards/rabbitmq.test.sh
 # Usa o jq local ou, na falta dele, a imagem pinada ghcr.io/jqlang/jq via Docker (mesma do lint-dashboards.sh).
 set -euo pipefail
@@ -60,25 +60,26 @@ expect_grep "override entra na rede externa rabbitmq-metrics" 'external: true' "
 expect_no_grep "override não publica porta no host" 'ports:' "$OVERRIDE"
 expect_no_grep "compose base de métricas NÃO depende da rede do broker" 'rabbitmq-metrics' prometheus/docker-compose.metrics.yml
 
-# Regras (YAML): grupo próprio, 12 regras, rótulos e filtros.
+# Regras (YAML): grupo próprio, 13 regras, rótulos e filtros.
 # Trecho do grupo rabbitmq: da linha "name: rabbitmq" até o próximo grupo (ou o fim do arquivo).
 group="$(awk '/^    name: /{in_group = ($2 == "rabbitmq")} /^  - orgId:/{in_group = 0} in_group' "$RULES")"
 count="$(grep -c '^      - uid: rabbitmq-' <<< "$group" || true)"
-if [[ "$count" == 12 ]]; then ok "12 regras no grupo rabbitmq"; else bad "12 regras no grupo rabbitmq (achou ${count})"; fi
+if [[ "$count" == 13 ]]; then ok "13 regras no grupo rabbitmq"; else bad "13 regras no grupo rabbitmq (achou ${count})"; fi
 expect_grep "grupo na pasta rabbitmq" "    folder: rabbitmq" "$RULES"
-if [[ "$(grep -c '^          project: rabbitmq$' <<< "$group")" == 12 ]]; then ok "toda regra com project: rabbitmq"; else bad "toda regra com project: rabbitmq"; fi
-for uid in rabbitmq-broker-down rabbitmq-queue-growing rabbitmq-queue-without-consumer rabbitmq-dlq-not-empty rabbitmq-memory-high \
+if [[ "$(grep -c '^          project: rabbitmq$' <<< "$group")" == 13 ]]; then ok "toda regra com project: rabbitmq"; else bad "toda regra com project: rabbitmq"; fi
+for uid in rabbitmq-broker-down rabbitmq-queue-growing rabbitmq-queue-without-consumer rabbitmq-dlq-not-empty rabbitmq-retry-stuck rabbitmq-memory-high \
   rabbitmq-memory-alarm rabbitmq-disk-low rabbitmq-disk-alarm rabbitmq-log-shipper-down rabbitmq-log-shipper-backlog \
   rabbitmq-log-shipper-output-failure rabbitmq-log-shipper-dropping; do
   expect_grep "regra ${uid}" "uid: ${uid}" "$RULES"
 done
 expect_grep "broker fora: up == 0 OU série ausente" 'sum(absent(up{job="rabbitmq"}) or vector(0)) + sum(count(up{job="rabbitmq"} == 0) or vector(0))' "$RULES"
-expect_grep "fila crescendo e sem consumidor excluem as DLQs" 'queue!~".*\\.dlq"} > 0 and on(vhost, queue) rabbitmq_queue_consumers{job="rabbitmq"} == 0' "$RULES"
+expect_grep "sem consumidor exclui as DLQs e as filas de retry" 'queue!~".*\\.(dlq|retry)"} > 0 and on(vhost, queue) rabbitmq_queue_consumers{job="rabbitmq"} == 0' "$RULES"
+expect_grep "fila crescendo exclui as DLQs" 'deriv(rabbitmq_queue_messages_ready{job="rabbitmq",queue!~".*\\.dlq"}[15m]) > 0' "$RULES"
 expect_grep "DLQ só nas filas *.dlq" 'rabbitmq_queue_messages_ready{job="rabbitmq",queue=~".*\\.dlq"}) > 0' "$RULES"
 expect_grep "alarmes de memória e disco do broker" 'rabbitmq_alarms_free_disk_space_watermark{job="rabbitmq"} == 1' "$RULES"
 expect_grep "alarme de memória do broker" 'rabbitmq_alarms_memory_used_watermark{job="rabbitmq"} == 1' "$RULES"
 # O Grafana 13.3 recusa a regra (e derruba o provisioning inteiro) se __dashboardUid__ vier sem __panelId__.
-if [[ "$(grep -c '__dashboardUid__: ' <<< "$group")" == 12 && "$(grep -c '__panelId__: "[0-9]*"' <<< "$group")" == 12 ]]; then ok "toda regra com __dashboardUid__ E __panelId__"
+if [[ "$(grep -c '__dashboardUid__: ' <<< "$group")" == 13 && "$(grep -c '__panelId__: "[0-9]*"' <<< "$group")" == 13 ]]; then ok "toda regra com __dashboardUid__ E __panelId__"
 else bad "toda regra com __dashboardUid__ E __panelId__ (o Grafana não sobe sem o par)"; fi
 if [[ "$(grep -c 'noDataState: Alerting' <<< "$group")" == 2 ]]; then ok "só as regras de alvo fora tratam ausência como alerta"; else bad "só as regras de alvo fora tratam ausência como alerta"; fi
 

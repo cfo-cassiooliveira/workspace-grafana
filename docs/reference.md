@@ -53,7 +53,7 @@ tests/                      fixtures (GELF, alerts, dashboards bons/ruins em tes
 scripts/e2e.sh              E2E SSO/hardening (Playwright 1.64.1 em container, tests/e2e/; Keycloak + Grafana, sem Graylog) [T15]
 scripts/lib/keycloak-admin.sh  funções da Admin API do Keycloak (usuários descartáveis, TOTP), compartilhadas por e2e.sh e smoke-test.sh [T15]
 prometheus/                 Prometheus + blackbox (compose próprio, targets/ file_sd, rules.yml) [T20/T22, ADR-0003]
-scripts/smoke-rabbitmq.sh   smoke do RabbitMQ (alvos, dashboards com dados, 12 alertas, mutation check no broker) [ADR-0005]
+scripts/smoke-rabbitmq.sh   smoke do RabbitMQ (alvos, dashboards com dados, 13 alertas, mutation check no broker) [ADR-0005]
 scripts/import-rabbitmq-dashboards.sh  baixa os dashboards oficiais 10991/11350 por revisão e SHA-256 fixados [ADR-0005]
 prometheus/docker-compose.rabbitmq.yml  override opcional: rede externa rabbitmq-metrics no Prometheus [ADR-0005]
 scripts/smoke-metrics.sh    smoke da stack de métricas (promtool, hardening, probe_success 1->0->1) [T20/T22]

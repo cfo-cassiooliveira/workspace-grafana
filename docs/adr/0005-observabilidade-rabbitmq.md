@@ -23,7 +23,7 @@ Fluent Bit (`log-shipper:2020/api/v2/metrics/prometheus`) pela rede interna `rab
    datasource, uid/título no padrão do projeto, `editable: false`. Mais um dashboard próprio do coletor de logs (`rabbitmq-log-shipper`).
 4. **Erlang-Distribution (11352 rev 10) não é incluído**: ele mostra tráfego e filas de distribuição entre nós Erlang
    (`erlang_vm_dist_*`); no broker de nó único essas séries não existem e todos os painéis ficariam vazios. Reavaliar se o broker virar cluster.
-5. **12 regras de alerta** na pasta `rabbitmq` (`provisioning/alerting/rules.yaml`), com `project=rabbitmq` e `severity`.
+5. **13 regras de alerta** na pasta `rabbitmq` (`provisioning/alerting/rules.yaml`), com `project=rabbitmq` e `severity`.
    `noDataState: Alerting` só para "broker fora" e "coletor fora" (ausência de série é o sintoma); `OK` nas demais.
 
 ### Limiares (dev, nó único, `mem_limit` 1 GiB, watermark de memória 600 MiB)
@@ -31,8 +31,9 @@ Fluent Bit (`log-shipper:2020/api/v2/metrics/prometheus`) pela rede interna `rab
 | Alerta | Limiar / for | Justificativa |
 |---|---|---|
 | Fila crescendo | > 100 prontas e `deriv[15m] > 0`, 15m | Ignora picos pequenos; exige tendência sustentada. DLQ excluída (tem regra própria) |
-| Sem consumidor | prontas > 0 e consumidores == 0, 10m | Tolera reinício de consumidor |
+| Sem consumidor | prontas > 0 e consumidores == 0, 10m (fora `*.dlq` e `*.retry`) | Tolera reinício de consumidor. Retry não tem consumidor por desenho (as mensagens voltam por TTL) |
 | DLQ não vazia | `*.dlq` > 0, 5m | Qualquer mensagem em DLQ exige olhar humano |
+| Retry parada | `*.retry`: prontas > publicadas nos últimos 5 min, 5m | TTL da policy `cadastro-retry` é 30 s; sobra mensagem velha = policy ausente. Numa falha prolongada a fila não esvazia, mas tudo nela é recente |
 | Memória alta | > 80% do limite exposto, 5m | Antecipa o alarme (que bloqueia publicadores) |
 | Alarmes de memória/disco | `== 1`, 0s, critical | Publicadores já estão bloqueados |
 | Disco perto do limite | livre < 2x o limite, 10m | Margem para agir antes do alarme |
