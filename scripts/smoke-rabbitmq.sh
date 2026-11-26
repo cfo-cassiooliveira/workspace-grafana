@@ -142,18 +142,18 @@ done
 
 # 5. Regras de alerta: carregadas por arquivo, rótulos, avaliação sem erro e alvos-fora em Normal (sem falso positivo).
 rules="$(gapi GET /api/v1/provisioning/alert-rules)"
-check "12 regras rabbitmq-* carregadas por arquivo na pasta rabbitmq, com project=rabbitmq e severity" \
-  "$(jqs -r '[.[] | select(.uid | startswith("rabbitmq-"))] | length == 12 and all(.provenance == "file" and .labels.project == "rabbitmq" and (.labels.severity | IN("warning", "critical")) and .ruleGroup == "rabbitmq")' <<< "$rules")"
+check "13 regras rabbitmq-* carregadas por arquivo na pasta rabbitmq, com project=rabbitmq e severity" \
+  "$(jqs -r '[.[] | select(.uid | startswith("rabbitmq-"))] | length == 13 and all(.provenance == "file" and .labels.project == "rabbitmq" and (.labels.severity | IN("warning", "critical")) and .ruleGroup == "rabbitmq")' <<< "$rules")"
 check "regras de alvo fora (broker e coletor) tratam ausência de série como alerta (noDataState Alerting)" \
   "$(jqs -r '[.[] | select(.uid == "rabbitmq-broker-down" or .uid == "rabbitmq-log-shipper-down") | select(.noDataState == "Alerting")] | length == 2' <<< "$rules")"
 group_health() { gapi GET /api/prometheus/grafana/api/v1/rules | jqs -r '[.data.groups[]? | select(.name == "rabbitmq") | .rules[]?] | "\(length) \([.[] | select(.health != "ok")] | length)"'; }
 health=""
 for _ in $(seq 1 18); do
   health="$(group_health)"
-  [[ "$health" == "12 0" ]] && break
+  [[ "$health" == "13 0" ]] && break
   sleep 10
 done
-check "as 12 regras do RabbitMQ avaliam com saúde ok contra o Prometheus (${health:-?} = total/não-ok)" "$(eq_if "$health" "12 0")"
+check "as 13 regras do RabbitMQ avaliam com saúde ok contra o Prometheus (${health:-?} = total/não-ok)" "$(eq_if "$health" "13 0")"
 rule_state() { gapi GET /api/prometheus/grafana/api/v1/rules | FILTER_VALUE="$1" jqs -r '[.data.groups[]?.rules[]? | select(.name == env.FILTER_VALUE)][0].state // ""'; }
 # Espera (até 2 min) a regra ficar em Normal; imprime o último estado lido.
 wait_inactive() {

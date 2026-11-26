@@ -481,7 +481,7 @@ groups:
           severity: warning
         annotations:
           summary: "A fila {{ $labels.queue }} (vhost {{ $labels.vhost }}) tem mensagens prontas e nenhum consumidor há 10 minutos."
-          description: "O serviço consumidor caiu ou perdeu a conexão. DLQs (*.dlq) ficam de fora: têm regra própria."
+          description: "O serviço consumidor caiu ou perdeu a conexão. Ficam de fora as DLQs (*.dlq), que têm regra própria, e as filas de retry (*.retry), sem consumidor por desenho."
           __dashboardUid__: rabbitmq-overview
           __panelId__: "9"
         data:
@@ -491,7 +491,7 @@ groups:
             model:
               refId: A
               datasource: {type: prometheus, uid: prometheus}
-              expr: 'rabbitmq_queue_messages_ready{job="rabbitmq",queue!~".*\\.dlq"} > 0 and on(vhost, queue) rabbitmq_queue_consumers{job="rabbitmq"} == 0'
+              expr: 'rabbitmq_queue_messages_ready{job="rabbitmq",queue!~".*\\.(dlq|retry)"} > 0 and on(vhost, queue) rabbitmq_queue_consumers{job="rabbitmq"} == 0'
               instant: true
               range: false
           - refId: R1
@@ -528,6 +528,45 @@ groups:
               refId: A
               datasource: {type: prometheus, uid: prometheus}
               expr: 'sum by (vhost, queue) (rabbitmq_queue_messages_ready{job="rabbitmq",queue=~".*\\.dlq"}) > 0'
+              instant: true
+              range: false
+          - refId: R1
+            datasourceUid: __expr__
+            model: {refId: R1, type: reduce, expression: A, reducer: last, settings: {mode: dropNN}, datasource: {type: __expr__, uid: __expr__}}
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              refId: C
+              type: threshold
+              expression: R1
+              conditions: [{evaluator: {type: gt, params: [0]}}]
+              datasource: {type: __expr__, uid: __expr__}
+      # Retry parada: há mais mensagens prontas do que as publicadas na janela, logo sobra mensagem com mais de 5 min numa
+      # fila cujo TTL é de 30 s (policy cadastro-retry). Contar só "prontas > 0" dispararia numa falha prolongada, em que a
+      # fila nunca esvazia. Sem a série de publicações (broker recém-reiniciado) conta zero.
+      - uid: rabbitmq-retry-stuck
+        title: RabbitMQ - Retry parada
+        condition: C
+        for: 5m
+        noDataState: OK
+        execErrState: Error
+        isPaused: false
+        labels:
+          project: rabbitmq
+          severity: warning
+        annotations:
+          summary: "A fila {{ $labels.queue }} (vhost {{ $labels.vhost }}) tem mensagens que não voltam pelo TTL."
+          description: "O normal é sair em 30 s. Confira no broker se a policy de retry (message-ttl e dead-letter-exchange) está aplicada à fila."
+          __dashboardUid__: rabbitmq-overview
+          __panelId__: "9"
+        data:
+          - refId: A
+            relativeTimeRange: {from: 600, to: 0}
+            datasourceUid: prometheus
+            model:
+              refId: A
+              datasource: {type: prometheus, uid: prometheus}
+              expr: 'rabbitmq_queue_messages_ready{job="rabbitmq",queue=~".*\\.retry"} > on(vhost, queue) (sum by (vhost, queue) (increase(rabbitmq_queue_exchange_messages_published_total{job="rabbitmq",queue=~".*\\.retry"}[5m])) or on(vhost, queue) (0 * rabbitmq_queue_messages_ready{job="rabbitmq",queue=~".*\\.retry"}))'
               instant: true
               range: false
           - refId: R1

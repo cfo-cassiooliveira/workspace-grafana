@@ -240,14 +240,17 @@ A rede entra por um **override opcional**, como o `docker-compose.graylog.yml`: 
 ```bash
 # Pré-requisito: broker de pé (projeto rabbitmq; ele cria a rede rabbitmq-metrics)
 docker compose -f prometheus/docker-compose.metrics.yml -f prometheus/docker-compose.rabbitmq.yml up -d
-./scripts/smoke-rabbitmq.sh      # alvos UP, dashboards com dados, 12 regras carregadas e mutation check no broker
+./scripts/smoke-rabbitmq.sh      # alvos UP, dashboards com dados, 13 regras carregadas e mutation check no broker
 ./tests/dashboards/rabbitmq.test.sh   # estático: dashboards, jobs, override e regras
+./tests/dashboards/rabbitmq-alerts.test.sh       # promtool: DLQ não vazia e fila sem consumidor com as filas da importação
+./tests/dashboards/cadastro-user-import.test.sh  # estático: painel da importação em lote
 ./scripts/import-rabbitmq-dashboards.sh  # reimporta os dashboards oficiais (revisão e SHA-256 fixados)
 ```
 
 - **Sem o override** (ou com o broker fora) os alvos ficam `up == 0` e "RabbitMQ - Broker fora do ar" dispara: é o esperado.
 - Dashboards (pasta `rabbitmq`): oficiais 10991 rev 15 e 11350 rev 8 (datasource ajustado) e `rabbitmq-log-shipper` (backlog, retries, erros e descartes da saída GELF). 11352 (Erlang-Distribution) fica de fora: sem séries `erlang_vm_dist_*` em nó único.
-- 12 alertas (broker fora, fila crescendo, fila sem consumidor, DLQ, memória alta/alarme, disco perto/alarme, coletor fora/backlog/falha/descarte); limiares justificados no ADR-0005.
+- 13 alertas (broker fora, fila crescendo, fila sem consumidor, DLQ, retry parada, memória alta/alarme, disco perto/alarme, coletor fora/backlog/falha/descarte); limiares justificados no ADR-0005. "Fila sem consumidor" ignora `*.dlq` e `*.retry` (sem consumidor por desenho).  "Retry parada" cobre `*.retry`: mensagens que não voltam pelo TTL (30 s) em cerca de 10 min.
+- Importação em lote do Cadastro: `cadastro/user-import.json` (`cadastro-user-import`, pasta `cadastro`) mostra prontas, não confirmadas, consumidores, taxa, retry e DLQ das filas `cadastro.user-import-lines*` (vhost `dev`), só com métricas do broker. As taxas de publicação usam a métrica agregada `rabbitmq_queue_exchange_messages_published_total` (não somem quando o publicador desconecta).
 - O mutation check do smoke usa o usuário `smoke-app` (vhost `dev`; senha lida de `../rabbitmq/.env`, só leitura), publica numa fila `smoke-consumer.grafana-*` sem consumidor, confere a regra real e remove a fila. Nunca reinicia o broker.
 
 ## Alertas como código (T14)
@@ -320,7 +323,7 @@ de hoje, sem dado pessoal); a API de administração e o reload do Prometheus es
 ./scripts/smoke-graylog.sh                  # override GELF: logs do Grafana no Graylog, sem login/e-mail em claro (Graylog de pé)
 ./scripts/smoke-metrics.sh                  # stack de métricas: config, hardening, alvos e probe_success
 ./scripts/smoke-rabbitmq.sh                 # [ADR-0005] RabbitMQ: alvos UP, dashboards com dados, alertas e mutation check (broker de pé + override)
-./tests/dashboards/rabbitmq.test.sh         # [ADR-0005] estático: dashboards oficiais, jobs, override e 12 regras
+./tests/dashboards/rabbitmq.test.sh         # [ADR-0005] estático: dashboards oficiais, jobs, override e 13 regras
 ./scripts/smoke-backup.sh                   # backup/restore: cria estado de teste, backup, down -v do grafana, restore e confere
 ./scripts/e2e.sh                           # [T15] E2E SSO e hardening (Playwright em container): Keycloak + Grafana de pé, SEM Graylog; usuários descartáveis e2e.* criados/removidos pela Admin API
 ./scripts/smoke-proxy.sh                    # [T23] proxy somente leitura: hardening e allowlist (Graylog + Grafana de pé)
