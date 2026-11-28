@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
-# Teste estático do repositório: sintaxe/shellcheck dos .sh, ausência de segredos, .env ignorado
-# e comportamento do generate-env.sh (0600, não sobrescreve, valores aleatórios).
+# Teste estático do repositório: sintaxe/shellcheck dos .sh, ausência de segredos, .env ignorado,
+# comportamento do generate-env.sh (0600, não sobrescreve, valores aleatórios), isolamento do opensearch-proxy no
+# compose/datasource e testes do guard.js. Roda sem stack de pé; não prova o comportamento em execução.
 # Uso: ./scripts/lint-repo.sh   (sai com código != 0 se algo falhar)
 set -euo pipefail
 
@@ -33,6 +34,7 @@ else
   echo "AVISO shellcheck indisponível (nem local nem Docker); só a checagem de sintaxe foi feita."
 fi
 
+# 2. Fim de linha: CRLF quebra o script dentro do container e no runner Linux.
 # Procura o caractere CR (retorno de carro) via grep -P.
 no_crlf() { ! grep -qP '\r' "$1"; }
 for f in "${scripts[@]}"; do check "LF $f" no_crlf "$f"; done
@@ -115,6 +117,7 @@ check ".env.example com os nomes das variáveis do generate-env.sh" test "$examp
 check ".env.example sem valores" bash -c "! grep -qE '^[A-Z_]+=.+' .env.example"
 
 # 6. opensearch-proxy (ADR-0004): allowlist de prefixos do guard.js == index pattern do datasource; datasource aponta para o proxy.
+# A lista existe em dois lugares; sem esta checagem, elas divergiriam em silêncio.
 guard_prefixes="$(sed -n "s/^const PREFIXES = \[\(.*\)\];$/\1/p" opensearch-proxy/guard.js | tr -d " '")"
 ds_prefixes="$(sed -n 's/^ *database: "\(.*\)"$/\1/p' provisioning/datasources/graylog-opensearch.yaml | sed 's/_\*//g')"
 check "prefixos do guard.js do proxy iguais ao index pattern do datasource" test -n "$guard_prefixes" -a "$guard_prefixes" = "$ds_prefixes"

@@ -6,6 +6,7 @@
 # do Graylog. Use 127.0.0.1 (não "localhost"): o daemon resolve localhost para ::1 (IPv6) e a porta é publicada só em IPv4.
 # A "tag" vira o campo service_name no pipeline do Graylog e leva ao stream "Grafana - Infra"; a regra 19-grafana-json do
 # Graylog mantém só level, logger e msg (login e e-mail de operador não são indexados, LGPD).
+# Custo do GELF por UDP: com o Graylog fora, as linhas se perdem sem aviso.
 # Atenção: subir SEM este arquivo recria o container com o driver padrão e os logs deixam de chegar ao Graylog.
 services:
   grafana:

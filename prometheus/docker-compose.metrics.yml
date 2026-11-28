@@ -16,7 +16,7 @@ services:
     volumes:
       - ./blackbox.yml:/config/blackbox.yml:ro
     networks:
-      # Única peça com rota até as APIs; o Prometheus e o Grafana só alcançam o blackbox, nunca as APIs.
+      # Única peça desta stack ligada às redes das APIs: o Prometheus só as sonda através dele.
       - probe
       - cadastro_default
       - legado_default

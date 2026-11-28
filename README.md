@@ -3,11 +3,29 @@
 **Sumário**: [Pré-requisitos](#pré-requisitos) · [Ordem de subida](#ordem-de-subida) · [Arquitetura de redes](#arquitetura-de-redes) · [Como subir](#como-subir) · [Dashboards como código](#dashboards-como-código) · [Variáveis do `.env`](#variáveis-do-env) · [Login único](#login-único-keycloak) · [Perfis](#perfis) · [Datasource de logs](#datasource-de-logs-graylogopensearch--t07) · [Backup](#backup-e-restauração--t09) · [Métricas](#métricas-e-health-check-das-apis-prometheus--blackbox) · [RabbitMQ](#observabilidade-do-rabbitmq-adr-0005) · [Alertas](#alertas-como-código-t14) · [Testes](#testes) · [CI](#ci) · [Riscos](#riscos-conhecidos-e-limitações) · [Pendências](#pendências)
 
 Grafana OSS 13.3.1 em Docker, com login único pelo Keycloak e dashboards/alertas **como código**, lendo os logs que os
-projetos já enviam ao [Graylog](../graylog). Decisões: [ADR-0001](docs/adr/0001-stack-grafana-oss.md) e
+projetos já enviam ao [Graylog](https://github.com/cfo-cassiooliveira/graylog). Decisões: [ADR-0001](docs/adr/0001-stack-grafana-oss.md) e
 [ADR-0002](docs/adr/0002-sso-keycloak-grafana.md). Especificação: [docs/specs/001-implantacao-grafana](docs/specs/001-implantacao-grafana/spec.md).
 
 > Estado: T01-T15, T17, T20, T22 e T23 entregues e T16 (fechamento) concluída; ADRs 0001-0004 **aceitos** (0005, observabilidade do RabbitMQ, proposto) pelo responsável técnico em 2026-11-17 (T21, scrape de Keycloak/SonarQube, segue fora da v1).
 > **OpenSearch somente leitura (T23, ADR-0004)**: o Grafana lê o OpenSearch só pelo `opensearch-proxy` (nginx + njs, allowlist estrita). Escrita e leitura fora do index pattern ficam negadas ao Viewer; sobram riscos residuais medidos (seção do datasource e ADR-0004).
+
+## Destaques técnicos
+
+- [Proxy somente leitura](opensearch-proxy/guard.js) com [testes](tests/unit/guard.test.mjs): o Grafana OSS não tem
+  permissão por datasource; o proxy nega por padrão. Custo: allowlist a manter e validação com limites
+  ([ADR-0004](docs/adr/0004-proxy-somente-leitura-opensearch.md)).
+- [Dashboards, datasources e alertas como código](provisioning): mudança revisada em PR e reproduzível, sem edição só
+  pela UI.
+- [Lint de dashboards](scripts/dashboard-lint.jq): barra no CI painel de log bruto e consulta com campo pessoal (LGPD).
+- [SSO com papel obrigatório](docker-compose.yml): sem role do Keycloak o login é negado; a sessão é curta porque a
+  revogação só vale no próximo login.
+- [Alertas que separam falha de cegueira](provisioning/alerting/rules.yaml): API fora, nome que não resolve e falta de
+  dados são regras diferentes. Sem notificação externa: o estado aparece só na UI.
+
+## Uso de IA
+
+Este projeto foi desenvolvido com auxílio de IA (**Claude Code**), na implementação e em code review. As decisões de
+arquitetura estão registradas nas ADRs, e as mudanças passam por testes automatizados e CI antes de entrar na `master`.
 
 ## Pré-requisitos
 
@@ -18,8 +36,8 @@ projetos já enviam ao [Graylog](../graylog). Decisões: [ADR-0001](docs/adr/000
 
 ## Ordem de subida
 
-1. **Redes**: criadas pelos projetos que as donam (`observability` e `logs-read` pelo [graylog](../graylog); `workspace-identity` pelo
-   [keycloak](../keycloak); `metrics`/`metrics-probe` por `prometheus/docker-compose.metrics.yml`; `logs-ro` pelo compose deste projeto).
+1. **Redes**: criadas pelos projetos que as donam (`observability` e `logs-read` pelo [graylog](https://github.com/cfo-cassiooliveira/graylog); `workspace-identity` pelo
+   [keycloak](https://github.com/cfo-cassiooliveira/Keycloak); `metrics`/`metrics-probe` por `prometheus/docker-compose.metrics.yml`; `logs-ro` pelo compose deste projeto).
 2. **Graylog** (`../graylog`, com o provisioner) para logs, datasource e alertas de log.
 3. **Keycloak** (`../keycloak`, `generate-env.sh` e provisioner) para o login único; gera o `KC_GRAFANA_CLIENT_SECRET`.
 4. **Grafana** (`./scripts/generate-env.sh` e `docker compose up -d --build`; com o Graylog de pé, junto do `-f docker-compose.graylog.yml`).

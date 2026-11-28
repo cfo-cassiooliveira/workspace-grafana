@@ -1,10 +1,13 @@
 // Guarda somente leitura do OpenSearch (ADR-0004). Decide por método + caminho + índices do corpo e só então
 // encaminha ao upstream (location interna /_up). Qualquer coisa fora da allowlist vira 403 (negar por padrão).
+// Importância: limita o que o Grafana consegue pedir ao OpenSearch, que neste ambiente local não autentica.
+// Custo: rota ou argumento novo do plugin é recusado até entrar na lista, e a validação precisa ser retestada a cada
+// atualização do plugin ou do OpenSearch (limites no ADR-0004).
 
-// Prefixos dos index sets de aplicação do Graylog (mesma lista do datasource; o smoke-proxy confere a igualdade).
+// Prefixos dos index sets de aplicação do Graylog (mesma lista do datasource; o lint-repo.sh confere a igualdade).
 const PREFIXES = ['cadastro', 'legado', 'keycloak', 'sonarqube', 'grafana', 'graylog'];
 const INDEX_TOKEN = new RegExp('^(' + PREFIXES.join('|') + ')_[a-z0-9_*.-]*$');
-// Um padrão de índice na URL: tokens permitidos separados por vírgula.
+// Recusa barra no segmento de índice da URL; os tokens separados por vírgula são validados em validIndexList.
 const INDEX_LIST = /^[^/]+$/;
 
 // Chaves permitidas na linha de cabeçalho (NDJSON) do _msearch.

@@ -1,5 +1,6 @@
 # Regras de gravação: disponibilidade por sistema e endpoint (fração 0..1 de sondas com sucesso na janela).
-# Consumidas pelo dashboard e pelo alerta da T17. Convenção: nível:métrica:operação.
+# Consumidas pelo dashboard de saúde das APIs (os alertas consultam probe_success direto): o cálculo das janelas longas
+# fica pronto, ao custo de séries a mais no Prometheus. Convenção: nível:métrica:operação.
 groups:
   - name: api-availability
     interval: 1m
