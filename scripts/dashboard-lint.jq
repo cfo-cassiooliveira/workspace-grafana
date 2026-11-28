@@ -1,5 +1,7 @@
 # Regras do lint de dashboards (usado por lint-dashboards.sh). Uma linha por violação: "<arquivo>\t[regra] mensagem".
 # A linha "<arquivo>\tuid=<valor>" alimenta a checagem de unicidade no shell.
+# Por que existe: impede que um painel com documento bruto ou campo pessoal entre pelo PR sem ninguém notar.
+# Limite: é revisão automática dos arquivos por nome de campo, não controle de acesso aos dados.
 def lgpd: "(^|[^a-z0-9])(cpf|cnpj|e-?mail|masked_login|phone|celular|telefone|user_?name|user_?id|preferred_username|mobile_?phone|(remote|client)_?ip|gl2_remote_ip|nome|full_message|remote_addr)([^a-z0-9]|$)";
 # "ip" sozinho como campo (sem pegar probe_ip_addr_hash, métrica de DNS do blackbox): "_" conta como parte do nome.
 def lgpd_ip: "(^|[^a-z0-9_])ip([^a-z0-9_]|$)";

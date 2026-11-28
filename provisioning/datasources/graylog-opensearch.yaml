@@ -1,5 +1,5 @@
 # Datasource de logs: OpenSearch do Graylog, lido pelo opensearch-proxy (somente leitura, ADR-0004) na rede logs-ro.
-# Sem credenciais: o OpenSearch roda sem security plugin e só o proxy o alcança (rede logs-read). Em produção: security plugin + usuário somente leitura.
+# Sem credenciais: o OpenSearch roda sem security plugin e o Grafana só o alcança pelo proxy. Em produção: security plugin + usuário somente leitura.
 apiVersion: 1
 
 datasources:

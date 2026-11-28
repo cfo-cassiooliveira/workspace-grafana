@@ -88,6 +88,7 @@ services:
     ports:
       # Só em localhost (sem exposição na rede local).
       - "127.0.0.1:3000:3000"
+    # Provisionamento montado somente leitura: a mudança entra pelo repositório, e o volume guarda só o estado local.
     volumes:
       - grafana-data:/var/lib/grafana
       - ./provisioning/dashboards:/etc/grafana/provisioning/dashboards:ro
@@ -107,6 +108,7 @@ services:
     restart: unless-stopped
 
   # Proxy somente leitura na frente do OpenSearch (ADR-0004): nginx + njs, allowlist estrita de rotas e índices.
+  # Custo: mais um serviço a manter; se ele cair, o Grafana deixa de ler os logs e os alertas de log entram em erro.
   # Imagem por tag + digest (licença BSD-2-Clause). Sem porta no host; duas redes: logs-ro (Grafana) e logs-read (OpenSearch).
   opensearch-proxy:
     image: nginx:1.29-alpine@sha256:5616878291a2eed594aee8db4dade5878cf7edcb475e59193904b198d9b830de

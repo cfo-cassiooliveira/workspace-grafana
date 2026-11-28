@@ -1,7 +1,9 @@
 # Regras de alerta como código (T14/T17). Estado visível só na UI (sem notificação externa; ver contact-points.yaml).
 # Convenções: uma pasta por projeto (mesmos nomes das pastas dos dashboards), labels "project" e "severity" em toda regra.
-# Alertas do Graylog que já existem NÃO são duplicados (ver README, "Alertas"): aqui ficam só os complementares.
-# As regras de log leem o datasource graylog-opensearch; as de saúde das APIs, o prometheus.
+# Como código: regra provisionada por arquivo não é editável pela UI; limiar muda por PR, com histórico.
+# Os alertas daqui complementam os do Graylog (ver README, "Alertas"); exceção: keycloak-login-burst repete o limiar de
+# um alerta de lá para o estado aparecer também no Grafana.
+# As regras de log leem o datasource graylog-opensearch; as de saúde das APIs e do RabbitMQ, o prometheus.
 # As de log excluem mensagens sintéticas do smoke (smoke_test:true), como os alertas do Graylog.
 # A taxa de erros do Cadastro também exclui o ruído dos health checks (um erro por sondagem com o Keycloak parado): a falha de dependência é da regra api-down.
 apiVersion: 1

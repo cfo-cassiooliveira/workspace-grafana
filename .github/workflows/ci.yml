@@ -22,6 +22,7 @@ env:
   GITLEAKS_IMAGE: zricethezav/gitleaks:v8.28.0@sha256:cdbb7c955abce02001a9f6c9f602fb195b7fadc1e812065883f695d1eeaba854
   TRIVY_IMAGE: aquasec/trivy:0.76.1@sha256:790fd66d1697395d8693d1acaa1ea702406a20f109b6fc7bac8db623eca6c06c
 
+# Actions fixadas por SHA e ferramentas por digest: uma tag pode ser movida para outro conteúdo.
 jobs:
   secrets:
     name: gitleaks (segredos em todo o histórico)
@@ -63,6 +64,7 @@ jobs:
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
       # shellcheck, LF, segredos, .env ignorado, generate-env, prefixos do proxy e testes do guard.js.
+      # Pega sem subir stack: divergência proxy/datasource e dashboard fora das regras. O proxy real fica no smoke local.
       - run: ./scripts/lint-repo.sh
       - run: ./scripts/lint-dashboards.sh
       - run: ./scripts/lint-dashboards.sh --self-test
